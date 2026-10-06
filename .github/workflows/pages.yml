@@ -58,6 +58,31 @@ jobs:
               process.exit(1);
             }
           }
+
+          // Persistent-session regression: the notebook kernel must retain
+          // definitions between execute_request messages.
+          if (JSON.parse(s.eval('A ← 42')).error) process.exit(1);
+          const persisted = JSON.parse(s.eval('A'));
+          if (persisted.error || !String(persisted.value || '').includes('42')) {
+            console.error('Persistent session failed:', persisted);
+            process.exit(1);
+          }
+
+          // Completion regression: reuse BasedPL's native completion API.
+          const completion = s.complete('⍳');
+          if (!Array.isArray(completion)) {
+            console.error('Completion API did not return an array:', completion);
+            process.exit(1);
+          }
+
+          // Structured display regression: arrays must arrive through the
+          // MIME/display event rather than being flattened by the adapter.
+          const arrayResult = JSON.parse(s.eval('2 3⍴⍳6'));
+          const arrayDisplay = (arrayResult.events || []).find(e => e.kind === 'display');
+          if (!arrayDisplay?.data?.['text/plain']) {
+            console.error('Missing structured array display:', arrayResult);
+            process.exit(1);
+          }
           NODE
       - name: Install JupyterLite build dependencies
         run: |
