@@ -76,8 +76,8 @@ const kernel: JupyterFrontEndPlugin<void> = {
       const beforeCursor = code.slice(0, cursorPos);
 
       // Only invoke the normal Jupyter completer inside a \`name expression.
-      if (/\\`[A-Za-z_][A-Za-z0-9_]*$/.test(beforeCursor) ||
-          /\\`$/.test(beforeCursor)) {
+      if (/`[A-Za-z_][A-Za-z0-9_]*$/.test(beforeCursor) ||
+          /`$/.test(beforeCursor)) {
         void app.commands.execute('completer:invoke-notebook');
       }
     };
