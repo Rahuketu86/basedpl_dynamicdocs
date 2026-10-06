@@ -52,14 +52,26 @@ One Session lives inside the worker, so interpreter state persists between REPL 
 The worker protocol is intentionally small:
 
     main page -- {type:"eval", code:"⍳5"} --> worker
-    worker --> BplSession::eval() --> BasedPL Session
-    worker <-- {type:"result", output, error} --
+    worker --> BplSession::eval() --> JSON text --> JSON.parse()
+    worker <-- {type:"result", output, events, value, error} --
+
+The WASM wrapper deliberately returns the evaluation envelope as JSON text.
+This keeps the Node and browser wasm-bindgen targets on the same deterministic
+wire format instead of depending on JavaScript object serialization.
 
 The UI also has a compact APL keyboard, command history, completion popup, Enter-to-evaluate, Tab-to-complete, Escape-to-close, and cursor-aware glyph insertion.
 
 ### REPL value rendering
 
-`BplSession::eval()` returns three distinct fields: `output`, `error`, and `value`. The Rust `Session::show()` API returns the evaluated value as display text. The Worker must forward all three fields to the page. In particular, `value` is what displays ordinary expressions such as `12+4` and `⍳5`; dropping it produces a successful-looking REPL with blank results. The browser UI therefore renders `output` and `value` separately and shows `error` when present.
+`BplSession::eval()` returns a JSON envelope containing `output`, `events`,
+`error`, and `value`. The Rust `Session::show()` API returns the evaluated
+value as display text, while BasedPL's `OutputSink` produces display events.
+The Worker parses the envelope and forwards all of it to the page. The browser
+UI renders captured output/display events and shows `error` when present.
+
+A deployed browser E2E test in `tests/e2e/repl.mjs` exercises the actual GitHub
+Pages URL and verifies visible output for `3`, `2+4`, `⍳5`, and `+/ 1 2 3`.
+The Pages workflow runs that test only after the deployment job succeeds.
 
 ## WASM compatibility fixes
 
