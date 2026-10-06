@@ -35,9 +35,7 @@ body.repl-mode{background:#111}body.repl-mode #referenceView{display:none}body.r
 .terminal-row{display:flex;align-items:flex-start;gap:10px;margin:0 0 12px}.prompt{flex:0 0 auto;color:#7db7ff;font-weight:700;user-select:none}.term-command{white-space:pre-wrap}.term-output{margin:2px 0 16px 26px;color:#ddd;white-space:pre-wrap}.term-error{margin:2px 0 16px 26px;color:#ff8d8d;white-space:pre-wrap}
 .inputbar{display:flex;align-items:flex-start;gap:10px;padding:10px 16px 14px;border-top:1px solid #333;background:#141414}.inputbar textarea{flex:1;min-width:0;min-height:26px;max-height:180px;resize:none;border:0;outline:0;background:transparent;color:#fff;font:15px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;padding:0}
 .repl-status{display:flex;gap:16px;align-items:center;flex-wrap:wrap;padding:7px 12px;border:1px solid var(--line);border-radius:9px;background:var(--panel);font-size:12px;color:var(--muted)}.status-ready{color:#16803a}.status-busy{color:#a15c00}.status-error{color:#b42318}
-.repl-kb{border:1px solid var(--line);border-radius:12px;background:var(--panel);overflow:hidden}.repl-kb-head{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--line)}.repl-kb-head b{font-size:12px}.repl-kb-head span{font-size:11px;color:var(--muted)}.repl-kb-body{padding:8px;display:flex;gap:5px;overflow-x:auto}
-.rkey{flex:0 0 42px;height:38px;border:1px solid #c7c7cc;border-radius:7px;background:linear-gradient(#f4f4f6,#dedee2);cursor:pointer;font-family:"APL385 Unicode","DejaVu Sans",sans-serif;font-size:18px}.rkey:hover{border-color:var(--accent);transform:translateY(-1px)}
-.completion{position:fixed;z-index:100;min-width:180px;max-width:min(420px,calc(100vw - 20px));max-height:260px;overflow:auto;background:#202020;color:#eee;border:1px solid #555;border-radius:9px;box-shadow:0 10px 35px #0007;padding:5px}.completion button{display:block;width:100%;text-align:left;background:none;border:0;color:inherit;padding:7px 9px;border-radius:5px;cursor:pointer;font:13px ui-monospace,SFMono-Regular,Menlo,monospace}.completion button:hover,.completion button.selected{background:#3b3b3b}.completion .cg{font-size:18px;margin-right:8px}.completion .cn{color:#aaa}
+.repl-kb{border:1px solid #333;border-radius:12px;background:#141414;overflow:hidden}.repl-kb-head{display:flex;align-items:center;gap:10px;padding:8px 10px;border-bottom:1px solid #333}.repl-kb-head b{font-size:12px;color:#eee}.repl-kb-head span{font-size:11px;color:#999;flex:1}.kb-switch{display:flex;gap:2px;background:#252525;border-radius:7px;padding:2px}.kb-switch button{border:0;background:transparent;color:#aaa;border-radius:5px;padding:4px 8px;font-size:11px;cursor:pointer}.kb-switch button.active{background:#3b3b3b;color:#fff}.repl-kb-body{padding:8px;display:flex;gap:5px;overflow-x:auto}.repl-kb-body.keyboard-mode{display:block;overflow:hidden;padding:7px 8px 9px}.repl-bar{display:flex;gap:5px;overflow-x:auto}.rkey{flex:0 0 42px;height:38px;border:1px solid #555;border-radius:7px;background:linear-gradient(#3a3a3c,#29292b);color:#f5f5f5;cursor:pointer;font-family:"APL385 Unicode","DejaVu Sans",sans-serif;font-size:18px}.rkey:hover{border-color:#888;transform:translateY(-1px)}.mac-kb{display:flex;flex-direction:column;gap:4px}.mac-row{display:flex;gap:4px;min-width:0}.mac-key{position:relative;min-width:0;height:34px;flex:1;border:1px solid #555;border-radius:6px;background:linear-gradient(#3a3a3c,#28282a);color:#f5f5f5;box-shadow:inset 0 1px #ffffff18,0 1px 1px #000;cursor:pointer;padding:3px 4px;text-align:center}.mac-key.wide{flex:1.35}.mac-key.space{flex:5}.mac-key .mac-glyph{font-family:"APL385 Unicode","DejaVu Sans",sans-serif;font-size:15px;line-height:15px}.mac-key .mac-label{position:absolute;left:4px;bottom:3px;color:#999;font:8px ui-monospace,SFMono-Regular,Menlo,monospace}.mac-key:hover{border-color:#888}.mac-key .mac-glyph-target{display:inline-block;padding:0 2px;border-radius:3px;cursor:pointer}.mac-key .mac-glyph-target:hover{background:#555}.completion{position:fixed;z-index:100;min-width:180px;max-width:min(420px,calc(100vw - 20px));max-height:260px;overflow:auto;background:#202020;color:#eee;border:1px solid #555;border-radius:9px;box-shadow:0 10px 35px #0007;padding:5px}.completion button{display:block;width:100%;text-align:left;background:none;border:0;color:inherit;padding:7px 9px;border-radius:5px;cursor:pointer;font:13px ui-monospace,SFMono-Regular,Menlo,monospace}.completion button:hover,.completion button.selected{background:#3b3b3b}.completion .cg{font-size:18px;margin-right:8px}.completion .cn{color:#aaa}
 @media(max-width:700px){#replView{padding:8px}.repl-shell{height:calc(100vh - 135px);min-height:460px}.scrollback{padding:12px;font-size:14px}.inputbar{padding:9px 10px 12px}.repl-status{gap:8px}.rkey{flex-basis:40px}}</style>
 </head>
 <body>
@@ -70,7 +68,7 @@ body.repl-mode{background:#111}body.repl-mode #referenceView{display:none}body.r
 <section id="replView"><div class="repl-shell">
 <div class="terminal"><div id="scrollback" class="scrollback"></div><div class="inputbar"><span class="prompt">&gt;</span><textarea id="replInput" rows="1" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="BasedPL input"></textarea></div></div>
 <div class="repl-status"><span id="replState" class="status-busy">◌ Loading WASM…</span><span>Session: persistent</span><span id="replCount">0 commands</span><span id="replTime">—</span></div>
-<div class="repl-kb"><div class="repl-kb-head"><b>BPL keyboard</b><span>Click inserts at cursor · Type normally · <code>`</code> completes names</span></div><div id="replKeyboard" class="repl-kb-body"></div></div>
+<div class="repl-kb"><div class="repl-kb-head"><b>BPL keyboard</b><span>Click inserts at cursor · Type normally · <code>`</code> completes names</span><div class="kb-switch" role="group" aria-label="Keyboard view"><button type="button" id="kbBarBtn" class="active">Bar</button><button type="button" id="kbMacBtn">Keyboard</button></div></div><div id="replKeyboard" class="repl-kb-body"><div id="replBar" class="repl-bar"></div><div id="replMacKeyboard" class="mac-kb" hidden></div></div></div>
 </div></section>
 
 <div id="drawer" class="drawer">
@@ -240,8 +238,67 @@ function resizeInput(){replInput.style.height='auto';replInput.style.height=Math
 function completePrefix(){const v=replInput.value,p=replInput.selectionStart,m=v.slice(0,p).match(/\`([A-Za-z_][A-Za-z0-9_]*)?$/);if(!m)return null;const prefix=m[1]||'',names=new Map();DATA.glyphs.forEach(g=>[g.name,g.glyph,g.monad,g.dyad].filter(Boolean).forEach(n=>{if(n.toLowerCase().startsWith(prefix.toLowerCase()))names.set(n,g)}));return{start:p-prefix.length-1,items:[...names.entries()].sort((a,b)=>a[0].localeCompare(b[0])).slice(0,40)}}
 function showCompletion(){const c=completePrefix();if(!c){completion.hidden=true;return}completion.replaceChildren();c.items.forEach(([n,g],i)=>{const b=document.createElement('button');b.type='button';b.dataset.glyph=g.glyph;b.innerHTML='<span class="cg"></span><span class="cn"></span>';b.querySelector('.cg').textContent=g.glyph;b.querySelector('.cn').textContent=n+' · '+(g.monad||g.dyad||'');if(i===0)b.classList.add('selected');completion.append(b)});if(!c.items.length){completion.hidden=true;return}completion.hidden=false;const r=replInput.getBoundingClientRect();completion.style.left=Math.max(8,Math.min(r.left,innerWidth-completion.offsetWidth-8))+'px';completion.style.bottom=Math.max(8,innerHeight-r.top+6)+'px'}
 function acceptCompletion(item){const c=completePrefix(),t=item?.dataset.glyph||c?.items[0]?.[1]?.glyph;if(!c||!t)return;replInput.setRangeText(t,c.start,replInput.selectionStart,'end');completion.hidden=true;resizeInput();replInput.focus()}
-document.getElementById('replKeyboard').innerHTML=DATA.glyphs.filter(g=>g.glyph.length<=2&&!['?','@'].includes(g.glyph)).slice(0,56).map(g=>'<button type="button" class="rkey" data-glyph="'+esc(g.glyph)+'" title="'+esc(g.name)+'">'+esc(g.glyph)+'</button>').join('');
-document.getElementById('replKeyboard').addEventListener('mousedown',e=>{const b=e.target.closest('.rkey');if(!b)return;e.preventDefault();const a=replInput.selectionStart,z=replInput.selectionEnd;replInput.focus();replInput.setRangeText(b.dataset.glyph,a,z,'end');resizeInput()});
+function insertReplText(text){
+  if(!text)return;
+  const a=replInput.selectionStart??replInput.value.length;
+  const z=replInput.selectionEnd??a;
+  replInput.focus();
+  replInput.setRangeText(text,a,z,'end');
+  resizeInput();
+  showCompletion();
+}
+function renderReplKeyboards(){
+  const bar=document.getElementById('replBar');
+  bar.innerHTML=DATA.glyphs.filter(g=>g.glyph.length<=2&&!['?','@'].includes(g.glyph)).slice(0,56)
+    .map(g=>'<button type="button" class="rkey" data-glyph="'+esc(g.glyph)+'" title="'+esc(g.name)+'">'+esc(g.glyph)+'</button>').join('');
+
+  const mac=document.getElementById('replMacKeyboard');
+  mac.innerHTML='';
+  DATA.keyboard.forEach(row=>{
+    const r=document.createElement('div');
+    r.className='mac-row';
+    row.forEach(([key,g])=>{
+      const b=document.createElement('button');
+      b.type='button';
+      b.className='mac-key '+(['tab','caps','shift','shift2','enter','delete','ctrl','ctrl2','cmd','cmd2','opt','opt2'].includes(key)?'wide ':'')+(key==='space'?'space ':'');
+      const matches=keyboardGlyphMatches(g);
+      const glyphHtml=[...g].map(ch=>{
+        if(matches.includes(ch)){
+          return '<span class="mac-glyph-target" data-glyph="'+esc(ch)+'">'+esc(ch)+'</span>';
+        }
+        return esc(ch);
+      }).join('');
+      b.innerHTML='<span class="mac-glyph">'+glyphHtml+'</span><span class="mac-label">'+esc(key.length>2?key.toUpperCase():key)+'</span>';
+      b.dataset.glyph=matches.length===1?matches[0]:'';
+      if(!matches.length)b.disabled=true;
+      r.appendChild(b);
+    });
+    mac.appendChild(r);
+  });
+}
+renderReplKeyboards();
+
+const replKeyboard=document.getElementById('replKeyboard');
+replKeyboard.addEventListener('mousedown',e=>{
+  const target=e.target.closest('.mac-glyph-target,.rkey');
+  if(!target)return;
+  e.preventDefault();
+  insertReplText(target.dataset.glyph);
+});
+document.getElementById('kbBarBtn').onclick=()=>{
+  document.getElementById('replBar').hidden=false;
+  document.getElementById('replMacKeyboard').hidden=true;
+  replKeyboard.classList.remove('keyboard-mode');
+  document.getElementById('kbBarBtn').classList.add('active');
+  document.getElementById('kbMacBtn').classList.remove('active');
+};
+document.getElementById('kbMacBtn').onclick=()=>{
+  document.getElementById('replBar').hidden=true;
+  document.getElementById('replMacKeyboard').hidden=false;
+  replKeyboard.classList.add('keyboard-mode');
+  document.getElementById('kbMacBtn').classList.add('active');
+  document.getElementById('kbBarBtn').classList.remove('active');
+};
 replInput.addEventListener('input',()=>{resizeInput();showCompletion()});
 replInput.addEventListener('keydown',e=>{if(e.key==='Tab'&&!completion.hidden){const b=completion.querySelector('.selected')||completion.querySelector('button');if(b){e.preventDefault();acceptCompletion(b);return}}if(e.key==='Escape'){completion.hidden=true;return}if(e.key==='ArrowUp'&&replInput.selectionStart===0&&replHistory.length){e.preventDefault();replHistoryPos=Math.min(replHistoryPos+1,replHistory.length-1);replInput.value=replHistory[replHistory.length-1-replHistoryPos]||'';resizeInput();replInput.setSelectionRange(replInput.value.length,replInput.value.length);return}if(e.key==='ArrowDown'&&replHistoryPos>=0){e.preventDefault();replHistoryPos--;replInput.value=replHistoryPos<0?'':replHistory[replHistory.length-1-replHistoryPos]||'';resizeInput();replInput.setSelectionRange(replInput.value.length,replInput.value.length);return}if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();runRepl()}});
 completion.addEventListener('mousedown',e=>{const b=e.target.closest('button');if(b){e.preventDefault();acceptCompletion(b)}});
