@@ -200,22 +200,39 @@ const kernel: JupyterFrontEndPlugin<void> = {
       }
     }, true);
 
-    for (const glyph of glyphs) {
+    const palette: Array<{ glyph: string; shortcut: string }> = [];
+    const seenPalette = new Set<string>();
+    const addPalette = (glyph: string, shortcut: string) => {
+      if (!glyph || seenPalette.has(glyph)) return;
+      seenPalette.add(glyph);
+      palette.push({ glyph, shortcut });
+    };
+    for (const [key, action] of Object.entries(layout.option)) {
+      if (typeof action === 'string') {
+        addPalette(action, '⌥' + key);
+      } else {
+        const state = layout.states[action.state];
+        addPalette(state.terminator, '⌥' + key);
+        for (const [nextKey, nextAction] of Object.entries(state.keys)) {
+          if (typeof nextAction === 'string') addPalette(nextAction, '⌥' + key + ' ' + nextKey);
+        }
+      }
+    }
+
+    for (const item of palette) {
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'bpl-glyph-button';
-      button.textContent = glyph;
-      button.title = 'Insert ' + glyph;
-      button.setAttribute('aria-label', 'Insert ' + glyph);
-      button.addEventListener('mousedown', event => {
-        // Keep the notebook editor selection/cursor while clicking the palette.
-        event.preventDefault();
-      });
+      button.textContent = item.glyph;
+      button.title = item.glyph + '   ' + item.shortcut;
+      button.setAttribute('aria-label', 'Insert ' + item.glyph);
+      button.addEventListener('mousedown', event => event.preventDefault());
       button.addEventListener('click', () => {
         const editor = last.editor;
         if (!editor) return;
         editor.focus();
-        editor.replaceSelection(glyph);
+        editor.replaceSelection(item.glyph);
+        hideGlyphPopup();
       });
       root.appendChild(button);
     }
