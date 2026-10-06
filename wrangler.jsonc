@@ -1,0 +1,8 @@
+{
+  "$schema": "https://unpkg.com/wrangler@latest/config-schema.json",
+  "name": "young-glade-bac6",
+  "compatibility_date": "2026-10-02",
+  "assets": {
+    "directory": "./dist"
+  }
+}
