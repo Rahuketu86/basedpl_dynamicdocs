@@ -206,7 +206,7 @@ export class BasedPLKernel extends BaseKernel {
       '⍣':'power-diaeresis','⍨':'commute','⍲':'nand','⍱':'nor','¯':'overbar','⋄':'diamond',
       '⍎':'execute','⍕':'format'
     };
-    const metadata = glyphs.map(glyph => ({
+    const metadata = glyphs.map((glyph: string) => ({
       text: glyph,
       type: 'keyword',
       label: glyph + '  ' + (names[glyph] ?? glyph)
@@ -214,7 +214,7 @@ export class BasedPLKernel extends BaseKernel {
 
     return {
       status: 'ok',
-      matches: metadata.map(item => item.label),
+      matches: metadata.map((item: { label: string }) => item.label),
       cursor_start: cursorStart,
       cursor_end: content.cursor_pos,
       metadata: { _jupyter_types_experimental: metadata }
