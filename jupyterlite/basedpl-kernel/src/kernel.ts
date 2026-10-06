@@ -88,7 +88,7 @@ export class BasedPLKernel extends BaseKernel {
     }
 
     if (result.error) {
-      this.publishError({
+      this.publishExecuteError({
         ename: 'BasedPLError',
         evalue: result.error,
         traceback: [result.error]
