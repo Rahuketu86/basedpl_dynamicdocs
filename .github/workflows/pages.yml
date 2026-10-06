@@ -26,6 +26,8 @@ jobs:
           targets: wasm32-unknown-unknown
       - name: Install wasm-bindgen
         run: cargo install wasm-bindgen-cli --version 0.2.129
+      - name: Prepare patched BasedPL
+        run: ./scripts/prepare_basedpl_wasm.sh
       - name: Build BasedPL WASM
         run: |
           rm -rf build/bpl
