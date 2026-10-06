@@ -63,30 +63,141 @@ const kernel: JupyterFrontEndPlugin<void> = {
     notebookTracker.currentChanged.connect(rememberActiveCell);
     rememberActiveCell();
 
-    // Reuse BasedPL's backtick glyph-discovery convention. The kernel's
-    // completeRequest already understands \`name and returns matching glyphs.
-    const invokeGlyphCompletion = () => {
-      const cell = notebookTracker.activeCell;
-      const editor = cell?.editor;
-      if (!editor) return;
+    // BasedPL-style backtick discovery, implemented directly in the CodeMirror cell.
+    let activeQuery: { editor: any; start: number } | null = null;
 
-      const code = editor.model.sharedModel.getSource();
-      const cursor = editor.getCursorPosition();
-      const cursorPos = editor.getOffsetAt(cursor);
-      const beforeCursor = code.slice(0, cursorPos);
-
-      // Only invoke the normal Jupyter completer inside a \`name expression.
-      if (/`[A-Za-z_][A-Za-z0-9_]*$/.test(beforeCursor) ||
-          /`$/.test(beforeCursor)) {
-        void app.commands.execute('completer:invoke-notebook');
-      }
+    const glyphNames: Record<string, string> = {
+      '√':'sqrt','∞':'infinity','⍬':'zilde','⍴':'rho','∘':'jot','÷':'divide',
+      'π':'pi','≠':'not-equal','⌈':'ceiling','⌊':'floor','←':'left-arrow',
+      '↓':'down-arrow','↑':'take','→':'right-arrow','⊣':'left-tack','⊢':'right-tack',
+      '⊃':'pick','∩':'intersection','∪':'union','×':'multiply','⌽':'reverse',
+      '⍺':'alpha','⍵':'omega','⍳':'iota','∊':'epsilon','⎕':'quad','∇':'del',
+      '∆':'delta','⍉':'transpose','⊖':'rotate','⍋':'grade-up','⍒':'grade-down',
+      '⍪':'catenate','⌿':'replicate','⍀':'expand','⍸':'iota-underbar',
+      '⍷':'epsilon-underbar','⌷':'squad','⌺':'quad-diamond','⌸':'quad-equal',
+      '⌹':'quad-divide','⍠':'quad-colon','⍟':'power','⊗':'outer-product',
+      '⊘':'divide-bar','⌾':'circle-bar','⨸':'divide-circle','⍭':'stile-tilde',
+      '⍶':'alpha-underbar','⍹':'omega-underbar','⍢':'del-diaeresis',
+      '⍤':'diaeresis-jot','⍥':'diaeresis-circle','⍣':'power-diaeresis',
+      '⍨':'commute','⍲':'nand','⍱':'nor','¯':'overbar','⋄':'diamond',
+      '⍎':'execute','⍕':'format'
     };
 
-    document.addEventListener('input', event => {
-      const target = event.target as Node | null;
+    const matchesGlyphs = (query: string) => {
+      const q = query.toLowerCase();
+      const result: Array<{glyph: string; name: string}> = [];
+      const seen = new Set<string>();
+      const add = (glyph: string, name: string) => {
+        if (seen.has(glyph)) return;
+        seen.add(glyph);
+        const n = name.toLowerCase();
+        const compact = n.replaceAll('-', '');
+        if (!q || compact === q || compact.startsWith(q) || n.includes(q))
+          result.push({glyph, name});
+      };
+
+      for (const [key, action] of Object.entries(layout.option)) {
+        if (typeof action === 'string') {
+          add(action, glyphNames[action] ?? action);
+        } else {
+          const state = layout.states[action.state];
+          add(state.terminator, action.state);
+          for (const next of Object.values(state.keys)) {
+            if (typeof next === 'string') add(next, glyphNames[next] ?? next);
+          }
+        }
+      }
+      return result.slice(0, 12);
+    };
+
+    const popup = document.createElement('div');
+    popup.id = 'basedpl-glyph-choices';
+    popup.hidden = true;
+    document.body.appendChild(popup);
+
+    const hideGlyphPopup = () => {
+      activeQuery = null;
+      popup.hidden = true;
+      popup.replaceChildren();
+    };
+
+    const refreshGlyphPopup = (editor: any) => {
+      const code = editor.model.sharedModel.getSource();
+      const pos = editor.getOffsetAt(editor.getCursorPosition());
+      const before = code.slice(0, pos);
+      const match = /\\x60([A-Za-z_][A-Za-z0-9_]*)?$/.exec(before);
+      if (!match) {
+        hideGlyphPopup();
+        return;
+      }
+
+      popup.replaceChildren();
+      const matches = matchesGlyphs(match[1] ?? '');
+      for (const item of matches) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = item.glyph + '  ' + item.name;
+        button.addEventListener('mousedown', e => e.preventDefault());
+        button.addEventListener('click', () => {
+          editor.setSelection({
+            start: editor.getPositionAt(pos - match[0].length),
+            end: editor.getCursorPosition()
+          });
+          editor.replaceSelection(item.glyph);
+          editor.focus();
+          hideGlyphPopup();
+        });
+        popup.appendChild(button);
+      }
+
+      if (!matches.length) {
+        const note = document.createElement('div');
+        note.textContent = 'Unknown symbol';
+        note.className = 'bpl-glyph-empty';
+        popup.appendChild(note);
+      }
+
+      const rect = editor.host.getBoundingClientRect();
+      popup.style.left = Math.max(8, Math.min(rect.left, innerWidth - 320)) + 'px';
+      popup.style.top = Math.min(innerHeight - 260, Math.max(8, rect.bottom + 4)) + 'px';
+      popup.hidden = false;
+      activeQuery = { editor, start: pos - match[0].length };
+    };
+
+    document.addEventListener('keydown', event => {
       const editor = notebookTracker.activeCell?.editor;
-      if (!editor || !target || !editor.host.contains(target)) return;
-      requestAnimationFrame(invokeGlyphCompletion);
+      if (!editor || event.defaultPrevented || event.isComposing) return;
+
+      if (activeQuery?.editor === editor) {
+        if (event.key === 'Tab' || event.key === 'Enter') {
+          const code = editor.model.sharedModel.getSource();
+          const pos = editor.getOffsetAt(editor.getCursorPosition());
+          const match = /\\x60([A-Za-z_][A-Za-z0-9_]*)?$/.exec(code.slice(0, pos));
+          const matches = match ? matchesGlyphs(match[1] ?? '') : [];
+          if (matches.length) {
+            editor.setSelection({
+              start: editor.getPositionAt(pos - match[0].length),
+              end: editor.getCursorPosition()
+            });
+            editor.replaceSelection(matches[0].glyph);
+            hideGlyphPopup();
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            editor.focus();
+            return;
+          }
+        }
+        if (event.key === 'Escape') {
+          hideGlyphPopup();
+          return;
+        }
+      }
+
+      if (event.key === String.fromCharCode(96) ||
+          event.key === 'Backspace' ||
+          /^[A-Za-z]$/.test(event.key)) {
+        requestAnimationFrame(() => refreshGlyphPopup(editor));
+      }
     }, true);
 
     for (const glyph of glyphs) {
