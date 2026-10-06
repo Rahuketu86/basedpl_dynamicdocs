@@ -190,16 +190,34 @@ export class BasedPLKernel extends BaseKernel {
       prefix,
       glyphs: isGlyphCompletion
     });
-    const matches = Array.isArray(response.matches)
+    const glyphs = Array.isArray(response.matches)
       ? response.matches.map((item: unknown) => String(item))
       : [];
+    const names: Record<string, string> = {
+      '√':'sqrt','∞':'infinity','⍬':'zilde','⍴':'rho','∘':'jot','÷':'divide','π':'pi','≠':'not-equal',
+      '⌈':'ceiling','⌊':'floor','←':'left-arrow','↓':'down-arrow','↑':'take','→':'right-arrow',
+      '⊣':'left-tack','⊢':'right-tack','⊃':'pick','∩':'intersection','∪':'union','×':'multiply',
+      '⌽':'reverse','⍺':'alpha','⍵':'omega','⍳':'iota','∊':'epsilon','⎕':'quad','∇':'del',
+      '∆':'delta','⍉':'transpose','⊖':'rotate','⍋':'grade-up','⍒':'grade-down','⍪':'catenate',
+      '⌿':'replicate','⍀':'expand','⍸':'iota-underbar','⍷':'epsilon-underbar','⌷':'squad',
+      '⌺':'quad-diamond','⌸':'quad-equal','⌹':'quad-divide','⍠':'quad-colon','⍟':'power',
+      '⊗':'outer-product','⊘':'divide-bar','⌾':'circle-bar','⨸':'divide-circle','⍭':'stile-tilde',
+      '⍶':'alpha-underbar','⍹':'omega-underbar','⍢':'del-diaeresis','⍤':'diaeresis-jot','⍥':'diaeresis-circle',
+      '⍣':'power-diaeresis','⍨':'commute','⍲':'nand','⍱':'nor','¯':'overbar','⋄':'diamond',
+      '⍎':'execute','⍕':'format'
+    };
+    const metadata = glyphs.map(glyph => ({
+      text: glyph,
+      type: 'keyword',
+      label: glyph + '  ' + (names[glyph] ?? glyph)
+    }));
 
     return {
       status: 'ok',
-      matches,
+      matches: metadata.map(item => item.label),
       cursor_start: cursorStart,
       cursor_end: content.cursor_pos,
-      metadata: {}
+      metadata: { _jupyter_types_experimental: metadata }
     };
   }
 
