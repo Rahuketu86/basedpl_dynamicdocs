@@ -32,7 +32,10 @@ const kernel: JupyterFrontEndPlugin<void> = {
         new BasedPLKernel(options)
     });
 
-    // Reuse BasedPL's input parser/keyboard logic; the kernel remains the single completion source.\n    const bplInput = inputFactory([], { alt_aliases: {}, option: {}, states: {} });\n\n    // A compact floating BasedPL input keeps the notebook UI intact while
+    // Reuse BasedPL's input parser/keyboard logic; the kernel remains the single completion source.
+    const bplInput = inputFactory([], { alt_aliases: {}, option: {}, states: {} });
+
+    // A compact floating BasedPL input keeps the notebook UI intact while
     // giving us the same `name -> glyph completion workflow as the standalone REPL.
     const root = document.createElement('div');
     root.id = 'basedpl-floating-input';
