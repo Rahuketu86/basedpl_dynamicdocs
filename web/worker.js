@@ -21,6 +21,7 @@ self.onmessage = event => {
         code: event.data.code || '',
         output: data.output || '',
         value: data.value == null ? '' : String(data.value),
+        events: Array.isArray(data.events) ? data.events : [],
         error: data.error || ''
       });
     } catch (error) {
@@ -29,6 +30,7 @@ self.onmessage = event => {
         code: event.data.code || '',
         output: '',
         value: '',
+        events: [],
         error: String(error)
       });
     }
