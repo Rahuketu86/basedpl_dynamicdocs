@@ -7,6 +7,7 @@ import { IKernelSpecs } from '@jupyterlite/services';
 import { INotebookTracker } from '@jupyterlab/notebook';
 import { BasedPLKernel } from './kernel.js';
 import inputFactory from './input.js';
+import layout from './layout.js';
 
 const kernel: JupyterFrontEndPlugin<void> = {
   id: '@rahuketu86/basedpl-kernel:kernel',
@@ -33,7 +34,7 @@ const kernel: JupyterFrontEndPlugin<void> = {
     });
 
     // Reuse BasedPL's input parser/keyboard logic; the kernel remains the single completion source.
-    const bplInput = inputFactory([], { alt_aliases: {}, option: {}, states: {} });
+    const bplInput = inputFactory([], layout);
 
     // A compact floating BasedPL input keeps the notebook UI intact while
     // giving us the same `name -> glyph completion workflow as the standalone REPL.
