@@ -20,6 +20,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - name: Install wasm-bindgen
+        run: cargo install wasm-bindgen-cli --version 0.2.105
+      - name: Build BasedPL WASM
+        run: |
+          rm -rf build/bpl
+          cargo build --release --target wasm32-unknown-unknown --manifest-path web/Cargo.toml
+          wasm-bindgen target/wasm32-unknown-unknown/release/basedpl_web.wasm --target web --out-dir build/bpl
       - name: Build site
         run: python build.py
       - name: Upload Pages artifact
