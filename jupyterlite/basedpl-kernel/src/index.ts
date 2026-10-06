@@ -17,6 +17,8 @@ const kernel: JupyterFrontEndPlugin<void> = {
     kernelspecs: IKernelSpecs,
     notebookTracker: INotebookTracker
   ) => {
+    let activeKernel: BasedPLKernel | null = null;
+
     kernelspecs.register({
       spec: {
         name: 'basedpl',
@@ -28,8 +30,11 @@ const kernel: JupyterFrontEndPlugin<void> = {
           'logo-64x64': ''
         }
       },
-      create: async (options: IKernel.IOptions): Promise<IKernel> =>
-        new BasedPLKernel(options)
+      create: async (options: IKernel.IOptions): Promise<IKernel> => {
+        const instance = new BasedPLKernel(options);
+        activeKernel = instance;
+        return instance;
+      }
     });
 
     // BasedPL Mac-layout glyph palette.
@@ -74,7 +79,7 @@ const kernel: JupyterFrontEndPlugin<void> = {
       '⍎':'execute','⍕':'format'
     };
 
-    const matchesGlyphs = (query: string) => {
+    const layoutMatchesGlyphs = (query: string) => {
       const q = query.toLowerCase();
       const result: Array<{glyph: string; name: string}> = [];
       const seen = new Set<string>();
@@ -87,7 +92,7 @@ const kernel: JupyterFrontEndPlugin<void> = {
           result.push({glyph, name});
       };
 
-      for (const [key, action] of Object.entries(layout.option)) {
+      for (const action of Object.values(layout.option)) {
         if (typeof action === 'string') {
           add(action, glyphNames[action] ?? action);
         } else {
@@ -101,6 +106,25 @@ const kernel: JupyterFrontEndPlugin<void> = {
       return result.slice(0, 12);
     };
 
+    const matchesGlyphs = async (query: string) => {
+      if (activeKernel) {
+        try {
+          const code = '`' + query;
+          const reply = await activeKernel.completeRequest({
+            code,
+            cursor_pos: code.length
+          });
+          return reply.matches.map(glyph => ({
+            glyph: String(glyph),
+            name: glyphNames[String(glyph)] ?? String(glyph)
+          })).slice(0, 12);
+        } catch {
+          // Fall through to the layout-only matcher while the worker starts.
+        }
+      }
+      return layoutMatchesGlyphs(query);
+    };
+
     const popup = document.createElement('div');
     popup.id = 'basedpl-glyph-choices';
     popup.hidden = true;
@@ -112,7 +136,7 @@ const kernel: JupyterFrontEndPlugin<void> = {
       popup.replaceChildren();
     };
 
-    const refreshGlyphPopup = (editor: any) => {
+    const refreshGlyphPopup = async (editor: any) => {
       const code = editor.model.sharedModel.getSource();
       const pos = editor.getOffsetAt(editor.getCursorPosition());
       const before = code.slice(0, pos);
@@ -123,7 +147,7 @@ const kernel: JupyterFrontEndPlugin<void> = {
       }
 
       popup.replaceChildren();
-      const matches = matchesGlyphs(match[1] ?? '');
+      const matches = await matchesGlyphs(match[1] ?? '');
       for (const item of matches) {
         const button = document.createElement('button');
         button.type = 'button';
@@ -164,7 +188,7 @@ const kernel: JupyterFrontEndPlugin<void> = {
           const code = editor.model.sharedModel.getSource();
           const pos = editor.getOffsetAt(editor.getCursorPosition());
           const match = /\x60([A-Za-z_][A-Za-z0-9_]*)?$/.exec(code.slice(0, pos));
-          const matches = match ? matchesGlyphs(match[1] ?? '') : [];
+          const matches = match ? await matchesGlyphs(match[1] ?? '') : [];
           if (matches.length) {
             editor.setSelection({
               start: editor.getPositionAt(pos - match[0].length),
@@ -187,7 +211,7 @@ const kernel: JupyterFrontEndPlugin<void> = {
       if (event.key === String.fromCharCode(96) ||
           event.key === 'Backspace' ||
           /^[A-Za-z]$/.test(event.key)) {
-        requestAnimationFrame(() => refreshGlyphPopup(editor));
+        requestAnimationFrame(() => { void refreshGlyphPopup(editor); });
       }
     }, true);
 
