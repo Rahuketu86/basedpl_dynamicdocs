@@ -293,9 +293,10 @@ const kernel: JupyterFrontEndPlugin<void> = {
 
       // First Tab opens the glyph list. A second Tab commits the selected/first glyph.
       if (item && ev.key === 'Tab' && plain && !ev.shiftKey) {
-        if (choice?.editor.id === e.id && choice.start === start && !choice.editor.text.slice(start + 1, choice.editor.pos).localeCompare(query)) {
-          if (choice.found.length) {
-            e.insert(choice.found[0].glyph, start);
+        const currentChoice = choice;
+        if (currentChoice && currentChoice.editor.id === e.id && currentChoice.start === start) {
+          if (currentChoice.found.length) {
+            e.insert(currentChoice.found[0].glyph, start);
             cancel();
           }
         } else {
