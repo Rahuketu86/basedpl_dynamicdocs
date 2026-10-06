@@ -14,8 +14,8 @@ self.onmessage = event => {
   if (!session) return;
   if (event.data?.type === 'eval') {
     try {
-      const result = session.eval(event.data.code || '');
-      const data = result || {};
+      const raw = session.eval(event.data.code || '');
+      const data = JSON.parse(raw);
       postMessage({
         type: 'result',
         code: event.data.code || '',
