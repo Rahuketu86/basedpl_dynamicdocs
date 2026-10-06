@@ -20,5 +20,5 @@ ensured-targets = ["jupyterlite_basedpl_kernel/labextension/package.json"]
 skip-if-exists = ["jupyterlite_basedpl_kernel/labextension/package.json"]
 
 [tool.hatch.build.hooks.jupyter-builder.build-kwargs]
-build_cmd = "build:labextension:dev"
+build_cmd = "build"
 npm = ["jlpm"]
