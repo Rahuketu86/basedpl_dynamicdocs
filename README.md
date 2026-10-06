@@ -125,11 +125,11 @@ This lets CI distinguish:
     eval()
       parser → evaluator → Value → Session::show() → JS value
 
-This distinction became important for the remaining ⍳5 failure.
+This distinction was useful while diagnosing the original runtime trap.
 
-## Current ⍳5 investigation
+## ⍳5 regression
 
-The browser currently reports:
+The original browser report was:
 
     ⍳5
     RuntimeError: unreachable
@@ -163,9 +163,7 @@ This tests:
      → Session::show()
      → serde-wasm-bindgen
 
-Therefore a failure only in the second test identifies the problem as display/serialization rather than the iota evaluator.
-
-The CI deliberately includes both 12+4 and ⍳5, rather than treating successful WASM compilation as proof that the browser interpreter works.
+Both paths now pass in the generated Node WASM artifact on CI. This is important: the remaining browser-side RuntimeError was not reproduced by the corrected WASM build, so the deployed site must use the newly built assets before judging the fix.
 
 ## CI
 
@@ -179,6 +177,12 @@ The CI deliberately includes both 12+4 and ⍳5, rather than treating successful
 6. creates browser and Node bindings
 7. tests interpreter-only execution
 8. tests the public eval path, including ⍳5
+
+The latest regression run passed both the interpreter-only and public eval tests for:
+
+    12+4
+    +/ 12 4 3
+    ⍳5
 
 A generated .wasm file alone is not considered a successful integration test.
 
@@ -204,6 +208,8 @@ This keeps upstream untouched, makes the compatibility delta reviewable, and mak
 
 .github/workflows/pages.yml uses the same preparation script as the PR workflow, so deployment and testing use the same BasedPL revision and WASM compatibility patch.
 
+After the WASM fix is merged to main, GitHub Pages must rebuild the worker and wasm-bindgen assets. A browser can otherwise continue executing an older worker/wasm pair from cache.
+
 The static reference can also be generated locally:
 
     python build.py
@@ -222,11 +228,18 @@ For this project the debugging sequence is:
 4. determine whether evaluation or rendering/serialization fails
 5. inspect the resulting WASM stack/source path
 6. add the failing expression to CI before declaring the fix complete
+7. rebuild/deploy both the worker JavaScript and WASM assets
+8. hard-refresh or use a new asset revision when testing a Pages deployment
 
 This avoids accumulating speculative interpreter patches.
 
 ## Current status
 
-The first WASM compatibility issue — unconditional Instant::now() during normal evaluation — has a deterministic local fix.
+- The getrandom WASM configuration is fixed.
+- The UUID WASM configuration is fixed.
+- The upstream Instant::now() browser trap is fixed locally without forking BasedPL.
+- The deterministic local patch is now merged to main.
+- The new WASM regression suite passes ⍳5 through both evaluation and public rendering.
+- GitHub Pages is rebuilding from the fixed main revision.
 
-The current remaining issue is the ⍳5 runtime trap. The test suite now isolates interpreter execution from the public rendering/serialization path so the next fix can target the actual failing layer.
+If a browser still reports RuntimeError: unreachable after the new Pages deployment completes, the next step should be to capture the exact browser stack and verify that the browser loaded the new worker/wasm assets rather than immediately changing the interpreter again.
