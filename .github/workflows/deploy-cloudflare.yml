@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       run_id:
-        description: "Successful Pages workflow run ID (leave blank for latest successful main build)"
+        description: "Successful Pages build run ID (leave blank for latest successful main build)"
         required: false
         type: string
 
@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   deploy:
-    name: Deploy built site to Cloudflare Pages
+    name: Deploy built site to Cloudflare Worker
     runs-on: ubuntu-latest
     steps:
       - name: Find build run
