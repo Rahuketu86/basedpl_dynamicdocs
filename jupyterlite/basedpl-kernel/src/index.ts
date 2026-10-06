@@ -271,22 +271,21 @@ const kernel: JupyterFrontEndPlugin<void> = {
     const style = document.createElement('style');
     style.textContent = [
       '#basedpl-input-host { position: fixed; inset: 0; z-index: 2147483647; pointer-events: none; }',
-      '#basedpl-input-host .ngn_lb { position: fixed; top: 0; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100vw - 16px); box-sizing: border-box; pointer-events: auto; background: #eee; color: #111; font: 15px ui-monospace, SFMono-Regular, Menlo, monospace; border: 1px solid #999; border-top: 0; border-radius: 0 0 10px 10px; padding: 8px 58px 9px; display: flex; flex-direction: column; align-items: center; gap: 5px; z-index: 2147483647; box-shadow: 0 2px 8px #0002; }',
+      '#basedpl-input-host .ngn_lb { position: fixed; top: 0; left: 50%; right: auto; transform: translateX(-50%); width: max-content; max-width: calc(100vw - 16px); box-sizing: border-box; pointer-events: auto; background: var(--jp-layout-color1, #fff); color: var(--jp-ui-font-color1, #111); font-family: var(--jp-ui-font-family, sans-serif); border: 1px solid var(--jp-border-color1, #bdbdbd); border-top: 0; border-radius: 0 0 10px 10px; padding: 8px 58px 9px; display: flex; flex-direction: column; align-items: center; gap: 5px; box-shadow: var(--jp-elevation-z2, 0 2px 8px #0002); }',
       '#basedpl-input-host .ngn_lb.bpl_collapsed { padding: 3px 46px; min-height: 32px; }',
       '#basedpl-input-host .bpl_collapsed .bpl_keyrow { display: none; }',
       '#basedpl-input-host .bpl_keyrow { display: flex; justify-content: center; align-items: center; gap: 5px; width: max-content; }',
-      '#basedpl-input-host .bpl_key { flex: 0 0 68px; width: 68px; height: 52px; padding: 3px; border: 1px solid #aaa; border-radius: 7px; background: #ddd; color: #111; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; box-sizing: border-box; user-select: none; }',
-      '#basedpl-input-host .bpl_key:hover { background: #bbb; }',
-      '#basedpl-input-host .bpl_key:active { transform: translateY(1px); background: #aaa; }',
+      '#basedpl-input-host .bpl_key { flex: 0 0 68px; width: 68px; height: 52px; padding: 3px; border: 1px solid var(--jp-border-color2, #c8c8c8); border-radius: 7px; background: var(--jp-layout-color2, #f5f5f5); color: var(--jp-ui-font-color1, #111); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; box-sizing: border-box; user-select: none; font-family: var(--jp-ui-font-family, sans-serif); }',
+      '#basedpl-input-host .bpl_key:hover { background: var(--jp-layout-color3, #e5e5e5); border-color: var(--jp-brand-color1, #2196f3); }',
+      '#basedpl-input-host .bpl_key:active { background: var(--jp-brand-color2, #1976d2); color: var(--jp-inverse-layout-color1, #fff); }',
       '#basedpl-input-host .bpl_key.unmapped { opacity: .3; }',
-      '#basedpl-input-host .bpl_glyph { display: block; width: 100%; font-size: 30px; line-height: 31px; min-height: 31px; text-align: center; }',
+      '#basedpl-input-host .bpl_glyph { display: block; width: 100%; font-family: var(--jp-content-font-family, sans-serif); font-size: 30px; line-height: 31px; min-height: 31px; text-align: center; }',
       '#basedpl-input-host .bpl_keylabel { display: block; width: 100%; font-size: 11px; line-height: 13px; opacity: .65; text-align: center; }',
-      '#basedpl-input-host .ngn_x, #basedpl-input-host .ngn_o { position: absolute; top: 5px; border: 0; background: transparent; color: inherit; cursor: pointer; font-size: 22px; padding: 4px 7px; z-index: 3; }',
+      '#basedpl-input-host .ngn_x, #basedpl-input-host .ngn_o { position: absolute; top: 5px; border: 0; background: transparent; color: var(--jp-ui-font-color1, #111); cursor: pointer; font-size: 22px; padding: 4px 7px; z-index: 3; }',
       '#basedpl-input-host .ngn_x { right: 5px; }',
       '#basedpl-input-host .ngn_o { right: 40px; }',
-      '@media(max-width: 1100px) { #basedpl-input-host .bpl_key { flex-basis: 52px; width: 52px; height: 48px; } #basedpl-input-host .bpl_glyph { font-size: 26px; } #basedpl-input-host .bpl_keyrow { gap: 3px; } #basedpl-input-host .ngn_lb { padding-left: 8px; padding-right: 48px; } }',
-      '@media(prefers-color-scheme:dark) { #basedpl-input-host .ngn_lb { background: #222; color: #ddd; } #basedpl-input-host .bpl_key { background: #333; border-color: #666; color: #ddd; } #basedpl-input-host .bpl_key:hover { background: #555; } }'
-    ].join('\\n');
+      '@media(max-width: 1100px) { #basedpl-input-host .bpl_key { flex-basis: 52px; width: 52px; height: 48px; } #basedpl-input-host .bpl_glyph { font-size: 26px; } #basedpl-input-host .bpl_keyrow { gap: 3px; } #basedpl-input-host .ngn_lb { padding-left: 8px; padding-right: 48px; } }'
+    ].join('\n');
     document.head.appendChild(style);
   }
 };
