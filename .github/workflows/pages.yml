@@ -99,7 +99,7 @@ jobs:
       - name: Validate BasedPL JupyterLite extension
         working-directory: jupyterlite/basedpl-kernel
         run: |
-          jlpm install --immutable
+          jlpm install
           jlpm build:lib
 
       - name: Build site
