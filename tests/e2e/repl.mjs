@@ -76,6 +76,44 @@ try {
     throw new Error(`Unexpected Mac keyboard output: got ${JSON.stringify(keyboardText)}`);
   }
 
+  // Verify Bar and Keyboard are genuinely separate views and that switching
+  // between them preserves whatever is currently in the REPL input.
+  await page.locator('#kbBarBtn').click();
+  const bar = page.locator('#replBar');
+  const macKeyboard = page.locator('#replMacKeyboard');
+  if (!(await bar.isVisible()) || await macKeyboard.isVisible()) {
+    throw new Error('Bar/Keyboard views are not distinct after selecting Bar');
+  }
+
+  const barMetrics = await bar.evaluate(el => ({
+    clientWidth: el.clientWidth,
+    scrollWidth: el.scrollWidth,
+    clientHeight: el.clientHeight,
+    scrollHeight: el.scrollHeight,
+    overflowX: getComputedStyle(el).overflowX,
+    whiteSpace: getComputedStyle(el).whiteSpace,
+    flexWrap: getComputedStyle(el).flexWrap,
+  }));
+  if (barMetrics.clientHeight <= 0 || barMetrics.scrollHeight !== barMetrics.clientHeight) {
+    throw new Error(`Bar is not single-line: ${JSON.stringify(barMetrics)}`);
+  }
+  if (barMetrics.scrollWidth <= barMetrics.clientWidth || !['auto', 'scroll'].includes(barMetrics.overflowX)) {
+    throw new Error(`Bar is not horizontally scrollable: ${JSON.stringify(barMetrics)}`);
+  }
+
+  await input.fill('⍳5');
+  await page.locator('#kbMacBtn').click();
+  if (await bar.isVisible() || !(await macKeyboard.isVisible())) {
+    throw new Error('Bar/Keyboard views are not distinct after selecting Keyboard');
+  }
+  if (await input.inputValue() !== '⍳5') {
+    throw new Error(`Switching views did not preserve input: got ${JSON.stringify(await input.inputValue())}`);
+  }
+  await page.locator('#kbBarBtn').click();
+  if (await input.inputValue() !== '⍳5') {
+    throw new Error(`Switching back to Bar did not preserve input: got ${JSON.stringify(await input.inputValue())}`);
+  }
+
   console.log('Browser E2E passed: bar + Mac keyboard, 3, 2+4, ⍳5, +/ 1 2 3');
 } finally {
   await browser.close();
