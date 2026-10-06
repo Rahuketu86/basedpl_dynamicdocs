@@ -6,7 +6,7 @@ const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage();
 
 try {
-  await page.goto(baseUrl, { waitUntil: 'networkidle' });
+  await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
 
   // The REPL starts its worker on page load, but switch explicitly to the
   // REPL tab so this test exercises the same UI a user sees.
@@ -30,6 +30,7 @@ try {
 
   for (let i = 0; i < cases.length; i += 1) {
     const [code, expected] = cases[i];
+    const before = await outputs.count();
     await input.fill(code);
     await input.press('Enter');
 
@@ -37,6 +38,12 @@ try {
       ({ count }) => Number.parseInt(document.querySelector('#replCount')?.textContent || '0', 10) >= count,
       { count: i + 1 },
       { timeout: 15_000 }
+    );
+
+    await page.waitForFunction(
+      ({ count }) => document.querySelectorAll('.term-output').length >= count,
+      { count: before + 1 },
+      { timeout: 5_000 }
     );
 
     const result = outputs.last();
