@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import os
 from pathlib import Path
 import shutil
 
@@ -15,6 +16,13 @@ if "<!doctype html>" not in html.lower():
 if "BasedPL" not in html:
     raise SystemExit("BasedPL reference content is missing.")
 
+# Give every deployed WASM bundle a unique URL. This avoids stale mobile-browser
+# caches serving an older worker/JS/WASM combination after a Pages deployment.
+version = os.environ.get("GITHUB_SHA", "dev")[:12]
+asset_dir = f"bpl/{version}"
+html = html.replace("const BPL_WASM_URL='./bpl/worker.js';",
+                    f"const BPL_WASM_URL='./{asset_dir}/worker.js';")
+
 DIST.mkdir(parents=True, exist_ok=True)
 for path in DIST.iterdir():
     if path.is_file():
@@ -22,12 +30,12 @@ for path in DIST.iterdir():
     elif path.is_dir():
         shutil.rmtree(path)
 
-shutil.copy2(SRC, DIST / "index.html")
+(DIST / "index.html").write_text(html, encoding="utf-8")
 
 # The WASM bundle is produced by CI before this script runs.
 WASM_BUILD = ROOT / "build" / "bpl"
 if WASM_BUILD.exists():
-    target = DIST / "bpl"
+    target = DIST / asset_dir
     target.mkdir(parents=True, exist_ok=True)
     for path in WASM_BUILD.iterdir():
         if path.is_file():
@@ -36,4 +44,4 @@ if WASM_BUILD.exists():
 else:
     raise SystemExit(f"Missing WASM build: {WASM_BUILD}")
 
-print(f"Built {DIST / 'index.html'} and {DIST / 'bpl'}")
+print(f"Built {DIST / 'index.html'} and {DIST / asset_dir}")
