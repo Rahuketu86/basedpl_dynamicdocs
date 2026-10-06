@@ -106,7 +106,10 @@ jobs:
         working-directory: jupyterlite/basedpl-kernel
         shell: bash -el {0}
         run: |
-          jlpm install
+          # GitHub Actions sets CI=true, which makes Yarn immutable by default.
+          # This extension has no checked-in lockfile yet, so allow the initial
+          # dependency resolution to create one in the build workspace.
+          jlpm install --no-immutable
           jlpm build:lib
           jlpm build:labextension:dev
 
