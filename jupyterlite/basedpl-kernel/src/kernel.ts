@@ -20,7 +20,7 @@ type Pending = {
 
 export class BasedPLKernel extends BaseKernel {
   private worker: Worker;
-  private ready: Promise<void>;
+  private bplReady: Promise<void>;
   private pending = new Map<number, Pending>();
   private nextId = 1;
 
@@ -30,7 +30,7 @@ export class BasedPLKernel extends BaseKernel {
       type: 'module'
     });
 
-    this.ready = new Promise((resolve, reject) => {
+    this.bplReady = new Promise((resolve, reject) => {
       const onMessage = (event: MessageEvent) => {
         if (event.data?.type === 'ready') {
           this.worker.removeEventListener('message', onMessage);
@@ -63,7 +63,7 @@ export class BasedPLKernel extends BaseKernel {
     type: 'eval' | 'complete',
     payload: Record<string, unknown>
   ): Promise<any> {
-    await this.ready;
+    await this.bplReady;
     const id = this.nextId++;
     return new Promise((resolve, reject) => {
       this.pending.set(id, { resolve, reject });
@@ -122,7 +122,7 @@ export class BasedPLKernel extends BaseKernel {
 
     if (!content.silent) {
       for (const event of result.events ?? []) {
-        const data: KernelMessage.IMimeBundle = {};
+        const data: Record<string, string> = {};
         for (const [key, value] of Object.entries(event.data ?? {})) {
           if (typeof value === 'string') data[key] = value;
         }
