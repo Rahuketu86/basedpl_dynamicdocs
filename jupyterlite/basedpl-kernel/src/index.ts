@@ -237,7 +237,6 @@ const kernel: JupyterFrontEndPlugin<void> = {
       if (ev.code === 'AltRight') rightAlt = false;
       keyInput = false;
       remember();
-      if (active) void refresh(ev.target);
     }, true);
 
     window.addEventListener('keydown', ev => {
