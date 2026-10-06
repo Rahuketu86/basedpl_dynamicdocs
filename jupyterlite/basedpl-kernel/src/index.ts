@@ -128,6 +128,8 @@ const kernel: JupyterFrontEndPlugin<void> = {
         pos,
         empty: from === to,
         rect: () => {
+          const coordinate = ed.getCoordinateForPosition?.(ed.getCursorPosition());
+          if (coordinate) return { left: coordinate.left, bottom: coordinate.bottom };
           const r = ed.host.getBoundingClientRect();
           return { left: r.left, bottom: r.bottom };
         },
@@ -202,8 +204,11 @@ const kernel: JupyterFrontEndPlugin<void> = {
       if (!found.length) { const n = document.createElement('small'); n.textContent = 'Unknown symbol'; tip.appendChild(n); }
       const r = e.rect();
       tip.hidden = false;
-      tip.style.left = Math.max(4, Math.min(r.left, innerWidth - tip.offsetWidth - 8)) + 'px';
-      tip.style.top = Math.max(bar.hidden || overlay ? 4 : bar.offsetHeight, Math.min(r.bottom + 4, innerHeight - tip.offsetHeight - 8)) + 'px';
+      const minTop = bar.hidden || overlay ? 4 : bar.offsetHeight + 4;
+      const left = Math.max(4, Math.min(r.left, innerWidth - Math.min(tip.offsetWidth, 360) - 8));
+      const top = Math.max(minTop, Math.min(r.bottom + 4, innerHeight - tip.offsetHeight - 8));
+      tip.style.left = left + 'px';
+      tip.style.top = top + 'px';
       choice = { editor: e, start, found };
     };
 
@@ -233,6 +238,7 @@ const kernel: JupyterFrontEndPlugin<void> = {
 
     bar.addEventListener('mousedown', ev => {
       ev.preventDefault();
+      const remembered = last.editor;
       const b = (ev.target as HTMLElement).closest('button') as HTMLButtonElement | null;
       if (!b) return;
       if (b === close) { bar.hidden = true; reflow(); }
@@ -240,8 +246,8 @@ const kernel: JupyterFrontEndPlugin<void> = {
         overlay = !overlay;
         try { localStorage.setItem('ngn_lb_overlay', overlay ? '1' : '0'); } catch {}
         reflow();
-      } else if (b.dataset.glyph && last.editor) {
-        last.editor.insert(b.dataset.glyph);
+      } else if (b.dataset.glyph && remembered) {
+        remembered.insert(b.dataset.glyph);
       }
       cancel();
     });
@@ -322,21 +328,22 @@ const kernel: JupyterFrontEndPlugin<void> = {
     const style = document.createElement('style');
     style.textContent = [
       '#basedpl-input-host { position: fixed; inset: 0; z-index: 2147483647; pointer-events: none; }',
-      '#basedpl-input-host .ngn_lb, #basedpl-input-host .bpl_choices { pointer-events: auto; background: #eee; color: #111; font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; z-index: 2147483647; }',
-      '#basedpl-input-host .ngn_lb { position: fixed; top: 0; left: 0; right: 0; border-bottom: 1px solid #999; padding: 3px 46px 3px 3px; display: flex; flex-direction: column; gap: 2px; align-items: center; }',
-      '#basedpl-input-host .bpl_keyrow { display: flex; gap: 2px; justify-content: center; }',
-      '#basedpl-input-host .bpl_key { width: 56px; height: 38px; padding: 2px; border: 1px solid #aaa; border-radius: 5px; background: #ddd; color: #111; cursor: pointer; }',
+      '#basedpl-input-host .ngn_lb, #basedpl-input-host .bpl_choices { pointer-events: auto; background: #eee; color: #111; font: 15px ui-monospace, SFMono-Regular, Menlo, monospace; z-index: 2147483647; }',
+      '#basedpl-input-host .ngn_lb { position: fixed; top: 0; left: 0; right: 0; border-bottom: 1px solid #999; padding: 6px 58px 7px; display: flex; flex-direction: column; gap: 4px; align-items: center; box-sizing: border-box; }',
+      '#basedpl-input-host .bpl_keyrow { display: flex; gap: 4px; justify-content: center; width: max-content; }',
+      '#basedpl-input-host .bpl_key { width: 64px; height: 48px; padding: 3px 5px; border: 1px solid #aaa; border-radius: 6px; background: #ddd; color: #111; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; box-sizing: border-box; }',
       '#basedpl-input-host .bpl_key:hover { background: #bbb; }',
+      '#basedpl-input-host .bpl_key:active { transform: translateY(1px); }',
       '#basedpl-input-host .bpl_key.unmapped { opacity: .35; }',
-      '#basedpl-input-host .bpl_glyph { display: block; font-size: 21px; line-height: 22px; min-height: 22px; }',
-      '#basedpl-input-host .bpl_keylabel { display: block; font-size: 9px; opacity: .7; line-height: 10px; }',
-      '#basedpl-input-host .ngn_x, #basedpl-input-host .ngn_o { position: absolute; top: 3px; border: 0; background: transparent; color: inherit; cursor: pointer; font-size: 18px; padding: 2px 5px; }',
-      '#basedpl-input-host .ngn_x { right: 3px; }',
-      '#basedpl-input-host .ngn_o { right: 27px; }',
-      '#basedpl-input-host .bpl_choices { position: fixed; max-height: 240px; max-width: calc(100vw - 16px); overflow: auto; border: 1px solid #888; border-radius: 4px; box-shadow: 0 3px 12px #0003; padding: 4px; }',
-      '#basedpl-input-host .bpl_choices button { display: block; width: 100%; text-align: left; white-space: nowrap; font: inherit; color: inherit; background: none; border: 0; cursor: pointer; padding: 3px 5px; }',
+      '#basedpl-input-host .bpl_glyph { display: block; font-size: 27px; line-height: 28px; min-height: 28px; text-align: center; }',
+      '#basedpl-input-host .bpl_keylabel { display: block; font-size: 11px; line-height: 12px; opacity: .7; text-align: center; }',
+      '#basedpl-input-host .ngn_x, #basedpl-input-host .ngn_o { position: absolute; top: 5px; border: 0; background: transparent; color: inherit; cursor: pointer; font-size: 22px; padding: 3px 7px; z-index: 2; }',
+      '#basedpl-input-host .ngn_x { right: 5px; }',
+      '#basedpl-input-host .ngn_o { right: 38px; }',
+      '#basedpl-input-host .bpl_choices { position: fixed; width: max-content; min-width: 150px; max-width: min(360px, calc(100vw - 16px)); max-height: 280px; overflow-y: auto; overflow-x: hidden; border: 1px solid #888; border-radius: 5px; box-shadow: 0 3px 12px #0003; padding: 4px; }',
+      '#basedpl-input-host .bpl_choices button { display: block; width: 100%; text-align: left; white-space: nowrap; font: inherit; color: inherit; background: none; border: 0; cursor: pointer; padding: 5px 8px; }',
       '#basedpl-input-host .bpl_choices button:hover { background: #777; color: white; }',
-      '#basedpl-input-host .bpl_choices small { display: block; padding: 4px; }',
+      '#basedpl-input-host .bpl_choices small { display: block; padding: 5px 8px; }',
       '@media(prefers-color-scheme:dark) { #basedpl-input-host .ngn_lb, #basedpl-input-host .bpl_choices { background: #222; color: #ddd; } #basedpl-input-host .bpl_key { background: #333; border-color: #666; color: #ddd; } #basedpl-input-host .bpl_key:hover { background: #555; } }'
     ].join('\\n');
     document.head.appendChild(style);
