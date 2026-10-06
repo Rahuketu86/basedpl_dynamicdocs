@@ -91,8 +91,12 @@ const kernel: JupyterFrontEndPlugin<void> = {
         if (repeated) return { text: state.terminator, stop: true };
         if (plain && ev.key === ' ') return { text: state.terminator, stop: true };
         if (ev.key === 'Backspace' || ev.key === 'Escape') return { text: '', stop: true };
-        if (plain && key && key in state.keys) {
-          const next = state.keys[key];
+        if (plain && key) {
+          const next = state.keys[key as string];
+          if (next === undefined) {
+            const rest = press(ev, option);
+            return { text: state.terminator + (rest?.text ?? ''), stop: rest?.stop ?? false };
+          }
           if (typeof next === 'string') return { text: next, stop: true };
           pending = next.state;
           return { text: '', stop: true };
@@ -157,7 +161,8 @@ const kernel: JupyterFrontEndPlugin<void> = {
     try { overlay = localStorage.getItem('ngn_lb_overlay') === '1'; } catch {}
     const palette = new Set<string>();
     const shortcuts = new Map<string, string>();
-    for (const [key, action] of Object.entries(macLayout.option)) {
+    for (const [key, actionValue] of Object.entries(macLayout.option as Record<string, any>)) {
+      const action: any = actionValue;
       if (typeof action === 'string') {
         palette.add(action); shortcuts.set(action, '⌥' + key);
       } else {
