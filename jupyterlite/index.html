@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BasedPL JupyterLite</title>
+<style>
+html,body{height:100%;margin:0}
+body{display:flex;flex-direction:column;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",sans-serif}
+#bpl-tabs{height:48px;display:flex;align-items:center;padding:0 14px;gap:5px;border-bottom:1px solid #d9d9de;background:#fff;box-sizing:border-box}
+#bpl-tabs a{padding:7px 12px;border:1px solid #d9d9de;border-radius:8px;text-decoration:none;color:#333}
+#bpl-tabs a.active{background:#0071e3;color:#fff;border-color:#0071e3}
+#jupyterlite{flex:1;min-height:0}
+</style>
+</head>
+<body>
+<nav id="bpl-tabs">
+  <a href="../">Reference</a>
+  <a href="../#repl">REPL</a>
+  <a href="./" class="active">JupyterLite</a>
+</nav>
+<div id="jupyterlite"></div>
+<script type="module">
+  import { JupyterLiteApp } from '@jupyterlite/application';
+  import applicationPlugins from '@jupyterlite/application-extension';
+  import servicesPlugins from '@jupyterlite/services-extension';
+  import notebookPlugins from '@jupyterlite/notebook-application-extension';
+  import notebookExtensionPlugins from '@jupyterlab/notebook-extension';
+  import filebrowserPlugins from '@jupyterlab/filebrowser-extension';
+  import docmanagerPlugins from '@jupyterlab/docmanager-extension';
+  import mainmenuPlugins from '@jupyterlab/mainmenu-extension';
+  import consolePlugins from '@jupyterlab/console-extension';
+  import settingregistryPlugins from '@jupyterlab/settingregistry-extension';
+  import themePlugins from '@jupyterlab/apputils-extension';
+  import basedplPlugins from '@rahuketu86/basedpl-kernel';
+
+  const app = new JupyterLiteApp({
+    shell: document.getElementById('jupyterlite')
+  });
+
+  app.registerPlugins([
+    ...applicationPlugins,
+    ...servicesPlugins,
+    ...notebookPlugins,
+    ...notebookExtensionPlugins,
+    ...filebrowserPlugins,
+    ...docmanagerPlugins,
+    ...mainmenuPlugins,
+    ...consolePlugins,
+    ...settingregistryPlugins,
+    ...themePlugins,
+    ...basedplPlugins
+  ]);
+
+  await app.start();
+</script>
+</body>
+</html>
