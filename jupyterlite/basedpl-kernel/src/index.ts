@@ -6,6 +6,7 @@ import type { IKernel } from '@jupyterlite/services';
 import { IKernelSpecs } from '@jupyterlite/services';
 import { INotebookTracker } from '@jupyterlab/notebook';
 import { BasedPLKernel } from './kernel.js';
+import layout from './layout.js';
 
 const kernel: JupyterFrontEndPlugin<void> = {
   id: '@rahuketu86/basedpl-kernel:kernel',
@@ -31,17 +32,7 @@ const kernel: JupyterFrontEndPlugin<void> = {
         new BasedPLKernel(options)
     });
 
-    // Simple glyph palette. Clicking a glyph inserts it into the last
-    // active notebook cell; no WASM/completion path is involved.
-    const glyphs = [
-      '⌈', '⌊', '⍉', '⌽', '⊖', '⍋', '⍒', '⍪', '⌿', '⍀',
-      '↑', '↓', '→', '←', '↕', '↢', '↣', '∇', '∆', '⍺',
-      '⍵', '⍳', '⍸', '∊', '⍷', '⍴', '⍬', '⎕', '⌷', '⌺',
-      '⌸', '⌹', '⍠', '∘', '•', '○', '⊂', '⊆', '∩', '∪',
-      '⊃', '⊥', '⊤', '×', '÷', '≠', '≡', '≢', '≤', '≥',
-      '√', '∞', '∧', '∨', '⍲', '⍱', '⊣', '⊢', 'π', '¿'
-    ];
-
+    // BasedPL Mac-layout glyph palette.
     const root = document.createElement('div');
     root.id = 'basedpl-glyph-bar';
     root.setAttribute('aria-label', 'BasedPL glyph palette');
