@@ -27,11 +27,22 @@ section{background:var(--panel);border:1px solid var(--line);border-radius:16px;
 .drawer{position:fixed;inset:0;z-index:50;pointer-events:none;display:block}.drawer.open{pointer-events:none}.panel{position:absolute;right:0;top:0;height:100%;width:min(680px,48vw);min-width:0;background:#fff;box-shadow:-15px 0 50px #0003;overflow:auto;transform:translateX(100%);transition:transform .28s cubic-bezier(.22,.61,.36,1)}.drawer.open .panel{transform:translateX(0);pointer-events:auto}body{--drawer-width:min(680px,48vw)}body.drawer-open main{width:calc(100% - var(--drawer-width));max-width:none;margin-left:0;margin-right:var(--drawer-width)}main{transition:width .28s cubic-bezier(.22,.61,.36,1),margin-right .28s cubic-bezier(.22,.61,.36,1)}.phead{position:sticky;top:0;background:#ffffffee;backdrop-filter:blur(15px);padding:15px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;z-index:2}.phead .glyph{font-size:44px}.close{margin-left:auto;border:0;background:#eee;border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:18px}.body{padding:18px}.tag{display:inline-block;padding:4px 8px;border-radius:7px;background:#eef5ff;color:#075db7;font-size:11px;margin:2px}.ref{display:flex;gap:8px;margin:14px 0}.ref a{padding:8px 11px;border:1px solid var(--line);border-radius:8px;text-decoration:none;color:var(--accent);background:#fff}.block{border:1px solid var(--line);border-radius:12px;padding:13px;margin:12px 0}.block h3{margin:0 0 8px;font-size:13px}.code{background:#1e1e1e;color:#f5f5f5;border-radius:8px;padding:11px;white-space:pre-wrap;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}.note{width:100%;min-height:110px;border:1px solid var(--line);border-radius:9px;padding:10px;font:13px inherit;resize:vertical}.example-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}.example-row input{padding:8px;border:1px solid var(--line);border-radius:7px}.add{border:1px dashed #aaa;background:#fafafa;padding:9px;border-radius:8px;cursor:pointer}.iframe{width:100%;height:520px;border:1px solid var(--line);border-radius:10px;margin-top:10px}
 .empty{padding:25px;color:var(--muted);text-align:center}.small{font-size:12px;color:var(--muted)}
 @media(max-width:700px){header{flex-wrap:wrap}.search{order:3;flex-basis:100%;max-width:none}main{padding:10px}.grid{grid-template-columns:repeat(auto-fill,minmax(135px,1fr))}.panel{width:78vw}.drawer-open main{width:22vw;margin-right:78vw}.keyboard-wrap{padding-left:6px;padding-right:6px}.key{border-radius:5px}.key .ordinary{display:none}}
-</style>
+/* --- BasedPL REPL --- */
+body.repl-mode{background:#111}body.repl-mode #referenceView{display:none}body.repl-mode header{background:#171717ee;border-color:#333;color:#f5f5f5}body.repl-mode header .sub{color:#999}body.repl-mode .search,body.repl-mode #favOnly,body.repl-mode #exportBtn,body.repl-mode #importBtn{display:none}
+.tabbar{display:flex;gap:4px;margin-left:10px}.tabbtn{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:8px 12px;cursor:pointer}.tabbtn.active{background:var(--accent);border-color:var(--accent);color:white}
+#replView{display:none;max-width:1500px;margin:0 auto;padding:18px 22px 24px}body.repl-mode #replView{display:block}.repl-shell{height:calc(100vh - 105px);min-height:520px;display:flex;flex-direction:column;gap:10px}
+.terminal{flex:1;min-height:0;background:#171717;border:1px solid #333;border-radius:14px;box-shadow:0 12px 40px #0005;display:flex;flex-direction:column;overflow:hidden}.scrollback{flex:1;overflow:auto;padding:18px 20px 10px;font:15px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;color:#eee;white-space:pre-wrap;word-break:break-word}
+.terminal-row{display:flex;align-items:flex-start;gap:10px;margin:0 0 12px}.prompt{flex:0 0 auto;color:#7db7ff;font-weight:700;user-select:none}.term-command{white-space:pre-wrap}.term-output{margin:2px 0 16px 26px;color:#ddd;white-space:pre-wrap}.term-error{margin:2px 0 16px 26px;color:#ff8d8d;white-space:pre-wrap}
+.inputbar{display:flex;align-items:flex-start;gap:10px;padding:10px 16px 14px;border-top:1px solid #333;background:#141414}.inputbar textarea{flex:1;min-width:0;min-height:26px;max-height:180px;resize:none;border:0;outline:0;background:transparent;color:#fff;font:15px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;padding:0}
+.repl-status{display:flex;gap:16px;align-items:center;flex-wrap:wrap;padding:7px 12px;border:1px solid var(--line);border-radius:9px;background:var(--panel);font-size:12px;color:var(--muted)}.status-ready{color:#16803a}.status-busy{color:#a15c00}.status-error{color:#b42318}
+.repl-kb{border:1px solid var(--line);border-radius:12px;background:var(--panel);overflow:hidden}.repl-kb-head{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--line)}.repl-kb-head b{font-size:12px}.repl-kb-head span{font-size:11px;color:var(--muted)}.repl-kb-body{padding:8px;display:flex;gap:5px;overflow-x:auto}
+.rkey{flex:0 0 42px;height:38px;border:1px solid #c7c7cc;border-radius:7px;background:linear-gradient(#f4f4f6,#dedee2);cursor:pointer;font-family:"APL385 Unicode","DejaVu Sans",sans-serif;font-size:18px}.rkey:hover{border-color:var(--accent);transform:translateY(-1px)}
+.completion{position:fixed;z-index:100;min-width:180px;max-width:min(420px,calc(100vw - 20px));max-height:260px;overflow:auto;background:#202020;color:#eee;border:1px solid #555;border-radius:9px;box-shadow:0 10px 35px #0007;padding:5px}.completion button{display:block;width:100%;text-align:left;background:none;border:0;color:inherit;padding:7px 9px;border-radius:5px;cursor:pointer;font:13px ui-monospace,SFMono-Regular,Menlo,monospace}.completion button:hover,.completion button.selected{background:#3b3b3b}.completion .cg{font-size:18px;margin-right:8px}.completion .cn{color:#aaa}
+@media(max-width:700px){#replView{padding:8px}.repl-shell{height:calc(100vh - 135px);min-height:460px}.scrollback{padding:12px;font-size:14px}.inputbar{padding:9px 10px 12px}.repl-status{gap:8px}.rkey{flex-basis:40px}}</style>
 </head>
 <body>
 <header>
-  <div><h1>APL Glyph Reference</h1><div class="sub">BasedPL · interactive Mac keyboard + personal notes</div></div>
+  <div><h1>APL Glyph Reference</h1><div class="sub">BasedPL · interactive Mac keyboard + personal notes</div></div><div class="tabbar"><button class="tabbtn active" id="referenceTab">Reference</button><button class="tabbtn" id="replTab">REPL</button></div>
   <div class="search"><input id="search" placeholder="Search glyphs, names, keys…  ⌘K"></div>
   <button class="topbtn" id="favOnly">☆ Favorites</button>
   <button class="topbtn" id="exportBtn">Export</button>
@@ -39,7 +50,7 @@ section{background:var(--panel);border:1px solid var(--line);border-radius:16px;
   <input type="file" id="importFile" accept=".json" hidden>
 </header>
 
-<main>
+<main id="referenceView">
 <section>
 <div class="sectionhead"><h2>Mac / US keyboard</h2><span class="small">Option = Alt · click any APL glyph</span></div>
 <div class="keyboard-wrap"><div id="keyboard" class="keyboard"></div></div>
@@ -56,6 +67,11 @@ section{background:var(--panel);border:1px solid var(--line);border-radius:16px;
 <div id="followups" class="follow"></div>
 </section>
 </main>
+<section id="replView"><div class="repl-shell">
+<div class="terminal"><div id="scrollback" class="scrollback"></div><div class="inputbar"><span class="prompt">&gt;</span><textarea id="replInput" rows="1" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="BasedPL input"></textarea></div></div>
+<div class="repl-status"><span id="replState" class="status-busy">◌ Loading WASM…</span><span>Session: persistent</span><span id="replCount">0 commands</span><span id="replTime">—</span></div>
+<div class="repl-kb"><div class="repl-kb-head"><b>BPL keyboard</b><span>Click inserts at cursor · Type normally · <code>`</code> completes names</span></div><div id="replKeyboard" class="repl-kb-body"></div></div>
+</div></section>
 
 <div id="drawer" class="drawer">
  <div class="panel">
@@ -214,5 +230,25 @@ document.getElementById('importFile').onchange=e=>{
 }
 document.addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();document.getElementById('search').focus()}if(e.key==='Escape')closeDrawer()});
 renderKeyboard();renderGrid();renderFollowups();
+</script>
+<script>
+const BPL_WASM_URL='./bpl/basedpl_web.js';let bplWorker,bplReady=false,replBusy=false,replHistory=[],replHistoryPos=-1;
+const replInput=document.getElementById('replInput'),scrollback=document.getElementById('scrollback'),completion=document.createElement('div');completion.className='completion';completion.hidden=true;document.body.append(completion);
+function setReplState(t,c='status-ready'){const e=document.getElementById('replState');e.textContent=t;e.className=c}
+function appendBlock(code,output='',error=''){const r=document.createElement('div');r.className='terminal-row';r.innerHTML='<span class="prompt">&gt;</span><span class="term-command"></span>';r.querySelector('.term-command').textContent=code;scrollback.append(r);if(output){const o=document.createElement('div');o.className='term-output';o.textContent=output;scrollback.append(o)}if(error){const o=document.createElement('div');o.className='term-error';o.textContent=error;scrollback.append(o)}scrollback.scrollTop=scrollback.scrollHeight}
+function resizeInput(){replInput.style.height='auto';replInput.style.height=Math.min(replInput.scrollHeight,180)+'px'}
+function completePrefix(){const v=replInput.value,p=replInput.selectionStart,m=v.slice(0,p).match(/\`([A-Za-z_][A-Za-z0-9_]*)?$/);if(!m)return null;const prefix=m[1]||'',names=new Map();DATA.glyphs.forEach(g=>[g.name,g.glyph,g.monad,g.dyad].filter(Boolean).forEach(n=>{if(n.toLowerCase().startsWith(prefix.toLowerCase()))names.set(n,g)}));return{start:p-prefix.length,items:[...names.entries()].sort((a,b)=>a[0].localeCompare(b[0])).slice(0,40)}}
+function showCompletion(){const c=completePrefix();if(!c){completion.hidden=true;return}completion.replaceChildren();c.items.forEach(([n,g],i)=>{const b=document.createElement('button');b.type='button';b.dataset.glyph=g.glyph;b.innerHTML='<span class="cg"></span><span class="cn"></span>';b.querySelector('.cg').textContent=g.glyph;b.querySelector('.cn').textContent=n+' · '+(g.monad||g.dyad||'');if(i===0)b.classList.add('selected');completion.append(b)});if(!c.items.length){completion.hidden=true;return}completion.hidden=false;const r=replInput.getBoundingClientRect();completion.style.left=Math.max(8,Math.min(r.left,innerWidth-completion.offsetWidth-8))+'px';completion.style.bottom=Math.max(8,innerHeight-r.top+6)+'px'}
+function acceptCompletion(item){const c=completePrefix(),t=item?.dataset.glyph||c?.items[0]?.[1]?.glyph;if(!c||!t)return;replInput.setRangeText(t,c.start,replInput.selectionStart,'end');completion.hidden=true;resizeInput();replInput.focus()}
+document.getElementById('replKeyboard').innerHTML=DATA.glyphs.filter(g=>g.glyph.length<=2&&!['?','@'].includes(g.glyph)).slice(0,56).map(g=>'<button type="button" class="rkey" data-glyph="'+esc(g.glyph)+'" title="'+esc(g.name)+'">'+esc(g.glyph)+'</button>').join('');
+document.getElementById('replKeyboard').addEventListener('mousedown',e=>{const b=e.target.closest('.rkey');if(!b)return;e.preventDefault();const a=replInput.selectionStart,z=replInput.selectionEnd;replInput.focus();replInput.setRangeText(b.dataset.glyph,a,z,'end');resizeInput()});
+replInput.addEventListener('input',()=>{resizeInput();showCompletion()});
+replInput.addEventListener('keydown',e=>{if(e.key==='Tab'&&!completion.hidden){const b=completion.querySelector('.selected')||completion.querySelector('button');if(b){e.preventDefault();acceptCompletion(b);return}}if(e.key==='Escape'){completion.hidden=true;return}if(e.key==='ArrowUp'&&replInput.selectionStart===0&&replHistory.length){e.preventDefault();replHistoryPos=Math.min(replHistoryPos+1,replHistory.length-1);replInput.value=replHistory[replHistory.length-1-replHistoryPos]||'';resizeInput();replInput.setSelectionRange(replInput.value.length,replInput.value.length);return}if(e.key==='ArrowDown'&&replHistoryPos>=0){e.preventDefault();replHistoryPos--;replInput.value=replHistoryPos<0?'':replHistory[replHistory.length-1-replHistoryPos]||'';resizeInput();replInput.setSelectionRange(replInput.value.length,replInput.value.length);return}if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();runRepl()}});
+completion.addEventListener('mousedown',e=>{const b=e.target.closest('button');if(b){e.preventDefault();acceptCompletion(b)}});
+function runRepl(){if(!bplReady||replBusy)return;const code=replInput.value;if(!code.trim())return;replBusy=true;completion.hidden=true;replInput.value='';resizeInput();replHistory.push(code);replHistoryPos=-1;window.__bplEvalStart=performance.now();setReplState('⌛ Evaluating…','status-busy');bplWorker.postMessage({type:'eval',code})}
+function startBpl(){try{bplWorker=new Worker(BPL_WASM_URL,{type:'module'});bplWorker.onmessage=e=>{const m=e.data;if(m.type==='ready'){bplReady=true;setReplState('● WASM ready');replInput.focus()}else if(m.type==='result'){document.getElementById('replTime').textContent=(performance.now()-window.__bplEvalStart).toFixed(1)+' ms';document.getElementById('replCount').textContent=replHistory.length+' commands';appendBlock(m.code,m.output||'',m.error||'');replBusy=false;setReplState(m.error?'⚠ Error':'● WASM ready',m.error?'status-error':'status-ready');replInput.focus()}};bplWorker.onerror=e=>{bplReady=false;replBusy=false;setReplState('⚠ WASM failed to load','status-error');appendBlock('[startup]','',e.message||String(e))}}catch(e){setReplState('⚠ WASM unavailable','status-error')}}
+document.getElementById('referenceTab').onclick=()=>{document.body.classList.remove('repl-mode');document.getElementById('referenceTab').classList.add('active');document.getElementById('replTab').classList.remove('active')};
+document.getElementById('replTab').onclick=()=>{document.body.classList.add('repl-mode');document.getElementById('replTab').classList.add('active');document.getElementById('referenceTab').classList.remove('active');replInput.focus()};
+startBpl();
 </script>
 </body></html>
