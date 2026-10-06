@@ -4,5 +4,8 @@ declare module './basedpl_web.js' {
     eval(code: string): string;
     complete(prefix: string): unknown;
   }
+
   export default function init(): Promise<void>;
 }
+
+export {};
