@@ -45,14 +45,10 @@ export class BasedPLKernel extends BaseKernel {
 
     this.worker.onmessage = event => {
       const message = event.data;
-      if (message.type === 'ready' || message.type === 'fatal') {
-        return;
-      }
+      if (message.type === 'ready' || message.type === 'fatal') return;
 
       const pending = this.pending.get(message.id);
-      if (!pending) {
-        return;
-      }
+      if (!pending) return;
       this.pending.delete(message.id);
 
       if (message.type === 'error') {
@@ -63,7 +59,10 @@ export class BasedPLKernel extends BaseKernel {
     };
   }
 
-  private async request(type: 'eval' | 'complete', payload: Record<string, unknown>): Promise<any> {
+  private async request(
+    type: 'eval' | 'complete',
+    payload: Record<string, unknown>
+  ): Promise<any> {
     await this.ready;
     const id = this.nextId++;
     return new Promise((resolve, reject) => {
@@ -77,7 +76,7 @@ export class BasedPLKernel extends BaseKernel {
       implementation: 'BasedPL',
       implementation_version: '0.1.24',
       language_info: {
-        codemirror_mode: 'apl',
+        codemirror_mode: { name: 'apl' },
         file_extension: '.bpl',
         mimetype: 'text/x-apl',
         name: 'basedpl',
@@ -123,7 +122,10 @@ export class BasedPLKernel extends BaseKernel {
 
     if (!content.silent) {
       for (const event of result.events ?? []) {
-        const data = event.data ?? {};
+        const data: KernelMessage.IMimeBundle = {};
+        for (const [key, value] of Object.entries(event.data ?? {})) {
+          if (typeof value === 'string') data[key] = value;
+        }
         const text = typeof data['text/plain'] === 'string'
           ? data['text/plain']
           : '';
@@ -135,7 +137,13 @@ export class BasedPLKernel extends BaseKernel {
             metadata: {}
           });
         } else if (text) {
-          this.publishStream({ name: 'stdout', text });
+          // BaseKernel in JupyterLite 0.7 does not expose publishStream.
+          // Publish textual output as a normal notebook result.
+          this.publishExecuteResult({
+            execution_count: this.executionCount,
+            data: { 'text/plain': text },
+            metadata: {}
+          });
         }
       }
     }
@@ -198,8 +206,20 @@ export class BasedPLKernel extends BaseKernel {
     return { status: 'ok', comms: {} };
   }
 
-  inputReply(content: KernelMessage.IInputReplyMsg['content']): void {
-    super.inputReply(content);
+  inputReply(_content: KernelMessage.IInputReplyMsg['content']): void {
+    // BasedPL does not currently request stdin.
+  }
+
+  async commOpen(_msg: KernelMessage.ICommOpenMsg): Promise<void> {
+    // No comm targets.
+  }
+
+  async commMsg(_msg: KernelMessage.ICommMsgMsg): Promise<void> {
+    // No comm targets.
+  }
+
+  async commClose(_msg: KernelMessage.ICommCloseMsg): Promise<void> {
+    // No comm targets.
   }
 
   dispose(): void {
