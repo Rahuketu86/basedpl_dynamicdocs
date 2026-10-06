@@ -85,7 +85,7 @@ const kernel: JupyterFrontEndPlugin<void> = {
         : null;
       if (pending) {
         const stateName = pending;
-        const state = macLayout.states[stateName];
+        const state = macLayout.states[stateName as string] as any;
         const repeated = action?.state === stateName;
         pending = null;
         if (repeated) return { text: state.terminator, stop: true };
@@ -161,7 +161,7 @@ const kernel: JupyterFrontEndPlugin<void> = {
       if (typeof action === 'string') {
         palette.add(action); shortcuts.set(action, '⌥' + key);
       } else {
-        const state = macLayout.states[action.state];
+        const state = macLayout.states[action.state as string] as any;
         if (!state) continue;
         palette.add(state.terminator); shortcuts.set(state.terminator, '⌥' + key);
         for (const [nextKey, nextAction] of Object.entries(state.keys)) {
@@ -217,7 +217,7 @@ const kernel: JupyterFrontEndPlugin<void> = {
       const found = await matchesGlyphs(query);
       const now = editor();
       if (!now || now.id !== e.id || now.pos !== e.pos || now.text !== e.text) return;
-      if (active?.id !== e.id || active.start !== start) return;
+      if (!active || active.id !== e.id || active.start !== start) return;
       show(e, start, found);
     };
 
