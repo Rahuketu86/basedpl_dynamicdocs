@@ -174,13 +174,22 @@ export class BasedPLKernel extends BaseKernel {
     content: KernelMessage.ICompleteRequestMsg['content']
   ): Promise<KernelMessage.ICompleteReplyMsg['content']> {
     const beforeCursor = content.code.slice(0, content.cursor_pos);
+    const glyphMatch = beforeCursor.match(/\`([A-Za-z_][A-Za-z0-9_]*)?$/);
     const match = beforeCursor.match(/[A-Za-z_][A-Za-z0-9_]*$/);
-    const prefix = match?.[0] ?? beforeCursor;
-    const cursorStart = match
-      ? content.cursor_pos - prefix.length
-      : content.cursor_pos;
+    const isGlyphCompletion = Boolean(glyphMatch);
+    const prefix = isGlyphCompletion
+      ? (glyphMatch?.[1] ?? '')
+      : (match?.[0] ?? beforeCursor);
+    const cursorStart = isGlyphCompletion
+      ? content.cursor_pos - prefix.length - 1
+      : match
+        ? content.cursor_pos - prefix.length
+        : content.cursor_pos;
 
-    const response = await this.request('complete', { prefix });
+    const response = await this.request('complete', {
+      prefix,
+      glyphs: isGlyphCompletion
+    });
     const matches = Array.isArray(response.matches)
       ? response.matches.map((item: unknown) => String(item))
       : [];
