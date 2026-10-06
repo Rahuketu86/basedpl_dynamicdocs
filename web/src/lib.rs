@@ -67,4 +67,12 @@ impl BplSession {
     pub fn complete(&self, prefix: &str) -> JsValue {
         serde_wasm_bindgen::to_value(&self.session.complete(prefix)).unwrap()
     }
+
+    pub fn complete_glyphs(&self, prefix: &str) -> JsValue {
+        let matches = basedpl::symbols::matches(prefix)
+            .into_iter()
+            .map(|(glyph, _)| glyph)
+            .collect::<Vec<_>>();
+        serde_wasm_bindgen::to_value(&matches).unwrap()
+    }
 }
