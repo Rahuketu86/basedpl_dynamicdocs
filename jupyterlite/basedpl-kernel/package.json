@@ -1,0 +1,31 @@
+{
+  "name": "@rahuketu86/basedpl-kernel",
+  "version": "0.1.0",
+  "description": "BasedPL kernel for JupyterLite",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "files": ["lib/**/*", "src/**/*", "jupyterlite_basedpl_kernel/labextension/**/*", "install.json"],
+  "scripts": {
+    "build": "jlpm build:lib && jlpm build:labextension:dev",
+    "build:lib": "tsc --sourceMap",
+    "build:labextension:dev": "jupyter labextension build --development True ."
+  },
+  "dependencies": {
+    "@jupyterlab/application": "^4.5.0",
+    "@jupyterlab/services": "^7.5.0",
+    "@jupyterlite/services": "^0.7.0"
+  },
+  "devDependencies": {
+    "@jupyterlab/builder": "^4.5.0",
+    "@types/node": "^22.0.0",
+    "typescript": "~5.0.2"
+  },
+  "jupyterlab": {
+    "extension": true,
+    "outputDir": "jupyterlite_basedpl_kernel/labextension",
+    "sharedPackages": {
+      "@jupyterlite/services": {"bundled": false, "singleton": true},
+      "@jupyterlab/services": {"bundled": false, "singleton": true}
+    }
+  }
+}
