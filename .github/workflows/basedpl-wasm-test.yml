@@ -61,5 +61,13 @@ jobs:
               console.error('Unexpected value:', JSON.stringify(result.value), 'expected:', JSON.stringify(want));
               process.exit(1);
             }
+            const display = (result.events || [])
+              .filter(e => e.kind === 'display')
+              .map(e => e.data?.['text/plain'] || '')
+              .join('');
+            if (!display.includes(want)) {
+              console.error('Missing display event:', JSON.stringify(display), 'expected:', JSON.stringify(want));
+              process.exit(1);
+            }
           }
           NODE
