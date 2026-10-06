@@ -38,6 +38,15 @@ jobs:
             exit 1
           fi
           wasm-bindgen "$WASM" --target web --out-dir build/bpl
+          rm -rf build/diagnostic
+          wasm-bindgen "$WASM" --target nodejs --out-dir build/diagnostic
+          node - <<'NODE'
+          const { BplSession } = require('./build/diagnostic/basedpl_web.js');
+          const s = new BplSession();
+          for (const code of ['12+4', '+/ 12 4 3']) {
+            console.log('DIAGNOSTIC', JSON.stringify(code), s.diagnostic(code));
+          }
+          NODE
       - name: Build site
         run: python build.py
       - name: Upload Pages artifact
