@@ -20,13 +20,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      # Cache the generated runtime so frontend-only JupyterLite changes do not rebuild Rust.
+      # This cache is deliberately independent of JupyterLite/frontend changes.
+      # Bump BPL_WASM_CACHE_VERSION only when the Rust/WASM implementation changes.
       - name: Restore BasedPL WASM cache
         id: bpl-wasm-cache
         uses: actions/cache/restore@v4
         with:
           path: build/bpl
-          key: basedpl-wasm-${{ hashFiles('web/**', 'scripts/prepare_basedpl_wasm.sh') }}
+          key: basedpl-wasm-v1
 
       - name: Install Rust
         if: steps.bpl-wasm-cache.outputs.cache-hit != 'true'
@@ -101,7 +102,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: build/bpl
-          key: basedpl-wasm-${{ hashFiles('web/**', 'scripts/prepare_basedpl_wasm.sh') }}
+          key: basedpl-wasm-v1
 
       - name: Install Node
         uses: actions/setup-node@v4
