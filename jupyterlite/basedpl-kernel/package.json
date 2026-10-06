@@ -18,7 +18,8 @@
   "dependencies": {
     "@jupyterlab/application": "4.5.11",
     "@jupyterlab/services": "7.5.11",
-    "@jupyterlite/services": "0.7.6"
+    "@jupyterlite/services": "0.7.6",
+    "@jupyterlab/notebook": "4.5.11"
   },
   "devDependencies": {
     "@jupyterlab/builder": "4.5.11",
