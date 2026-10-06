@@ -4,7 +4,7 @@ import {
 } from '@jupyterlab/application';
 import type { IKernel } from '@jupyterlite/services';
 import { IKernelSpecs } from '@jupyterlite/services';
-import { BasedPLKernel } from './kernel';
+import { BasedPLKernel } from './kernel.js';
 
 const kernel: JupyterFrontEndPlugin<void> = {
   id: '@rahuketu86/basedpl-kernel:kernel',
