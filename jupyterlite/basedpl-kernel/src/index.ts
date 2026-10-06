@@ -63,6 +63,32 @@ const kernel: JupyterFrontEndPlugin<void> = {
     notebookTracker.currentChanged.connect(rememberActiveCell);
     rememberActiveCell();
 
+    // Reuse BasedPL's backtick glyph-discovery convention. The kernel's
+    // completeRequest already understands \`name and returns matching glyphs.
+    const invokeGlyphCompletion = () => {
+      const cell = notebookTracker.activeCell;
+      const editor = cell?.editor;
+      if (!editor) return;
+
+      const code = editor.model.sharedModel.getSource();
+      const cursor = editor.getCursorPosition();
+      const cursorPos = editor.getOffsetAt(cursor);
+      const beforeCursor = code.slice(0, cursorPos);
+
+      // Only invoke the normal Jupyter completer inside a \`name expression.
+      if (/\\`[A-Za-z_][A-Za-z0-9_]*$/.test(beforeCursor) ||
+          /\\`$/.test(beforeCursor)) {
+        void app.commands.execute('completer:invoke-notebook');
+      }
+    };
+
+    document.addEventListener('input', event => {
+      const target = event.target as Node | null;
+      const editor = notebookTracker.activeCell?.editor;
+      if (!editor || !target || !editor.host.contains(target)) return;
+      requestAnimationFrame(invokeGlyphCompletion);
+    }, true);
+
     for (const glyph of glyphs) {
       const button = document.createElement('button');
       button.type = 'button';
