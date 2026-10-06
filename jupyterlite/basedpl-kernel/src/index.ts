@@ -125,7 +125,7 @@ const kernel: JupyterFrontEndPlugin<void> = {
       const code = editor.model.sharedModel.getSource();
       const pos = editor.getOffsetAt(editor.getCursorPosition());
       const before = code.slice(0, pos);
-      const match = /\\x60([A-Za-z_][A-Za-z0-9_]*)?$/.exec(before);
+      const match = /\x60([A-Za-z_][A-Za-z0-9_]*)?$/.exec(before);
       if (!match) {
         hideGlyphPopup();
         return;
@@ -172,7 +172,7 @@ const kernel: JupyterFrontEndPlugin<void> = {
         if (event.key === 'Tab' || event.key === 'Enter') {
           const code = editor.model.sharedModel.getSource();
           const pos = editor.getOffsetAt(editor.getCursorPosition());
-          const match = /\\x60([A-Za-z_][A-Za-z0-9_]*)?$/.exec(code.slice(0, pos));
+          const match = /\x60([A-Za-z_][A-Za-z0-9_]*)?$/.exec(code.slice(0, pos));
           const matches = match ? matchesGlyphs(match[1] ?? '') : [];
           if (matches.length) {
             editor.setSelection({
