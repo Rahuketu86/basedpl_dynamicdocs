@@ -26,7 +26,7 @@ export class BasedPLKernel extends BaseKernel {
 
   constructor(options: any) {
     super(options);
-    this.worker = new Worker(new URL('./worker.ts', import.meta.url), {
+    this.worker = new Worker(new URL('./worker.js', import.meta.url), {
       type: 'module'
     });
 
