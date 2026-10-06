@@ -41,7 +41,7 @@ body.repl-mode{background:#111}body.repl-mode #referenceView{display:none}body.r
 </head>
 <body>
 <header>
-  <div><h1>APL Glyph Reference</h1><div class="sub">BasedPL · interactive Mac keyboard + personal notes</div></div><div class="tabbar"><button class="tabbtn active" id="referenceTab">Reference</button><button class="tabbtn" id="replTab">REPL</button></div>
+  <div><h1>APL Glyph Reference</h1><div class="sub">BasedPL · interactive Mac keyboard + personal notes</div></div><div class="tabbar"><button class="tabbtn active" id="referenceTab">Reference</button><button class="tabbtn" id="replTab">REPL</button><button class="tabbtn" id="jupyterliteTab">JupyterLite</button></div>
   <div class="search"><input id="search" placeholder="Search glyphs, names, keys…  ⌘K"></div>
   <button class="topbtn" id="favOnly">☆ Favorites</button>
   <button class="topbtn" id="exportBtn">Export</button>
@@ -305,8 +305,13 @@ replInput.addEventListener('keydown',e=>{if(e.key==='Tab'&&!completion.hidden){c
 completion.addEventListener('mousedown',e=>{const b=e.target.closest('button');if(b){e.preventDefault();acceptCompletion(b)}});
 function runRepl(){if(!bplReady||replBusy)return;const code=replInput.value;if(!code.trim())return;replBusy=true;completion.hidden=true;replInput.value='';resizeInput();replHistory.push(code);replHistoryPos=-1;window.__bplEvalStart=performance.now();setReplState('⌛ Evaluating…','status-busy');bplWorker.postMessage({type:'eval',code})}
 function startBpl(){try{bplWorker=new Worker(BPL_WASM_URL,{type:'module'});bplWorker.onmessage=e=>{const m=e.data;if(m.type==='ready'){bplReady=true;setReplState('● WASM ready');replInput.focus()}else if(m.type==='result'){document.getElementById('replTime').textContent=(performance.now()-window.__bplEvalStart).toFixed(1)+' ms';document.getElementById('replCount').textContent=replHistory.length+' commands';const eventText=(m.events||[]).map(e=>e?.data?.['text/plain']??'').filter(Boolean).join('\\n');appendBlock(m.code,m.output||eventText||'',m.output?'':(m.value||''),m.error||'');replBusy=false;setReplState(m.error?'⚠ Error':'● WASM ready',m.error?'status-error':'status-ready');replInput.focus()}};bplWorker.onerror=e=>{bplReady=false;replBusy=false;setReplState('⚠ WASM failed to load','status-error');appendBlock('[startup]','', '', e.message||String(e))}}catch(e){setReplState('⚠ WASM unavailable','status-error')}}
-document.getElementById('referenceTab').onclick=()=>{document.body.classList.remove('repl-mode');document.getElementById('referenceTab').classList.add('active');document.getElementById('replTab').classList.remove('active')};
-document.getElementById('replTab').onclick=()=>{document.body.classList.add('repl-mode');document.getElementById('replTab').classList.add('active');document.getElementById('referenceTab').classList.remove('active');replInput.focus()};
+function showReference(){document.body.classList.remove('repl-mode');document.getElementById('referenceTab').classList.add('active');document.getElementById('replTab').classList.remove('active');document.getElementById('jupyterliteTab').classList.remove('active')}
+function showRepl(){document.body.classList.add('repl-mode');document.getElementById('replTab').classList.add('active');document.getElementById('referenceTab').classList.remove('active');document.getElementById('jupyterliteTab').classList.remove('active');replInput.focus()}
+document.getElementById('referenceTab').onclick=()=>{history.replaceState(null,'',location.pathname);showReference()};
+document.getElementById('replTab').onclick=()=>{history.replaceState(null,'','#repl');showRepl()};
+document.getElementById('jupyterliteTab').onclick=()=>{location.href='jupyterlite/'};
+if(location.hash==='#repl')showRepl();
+else showReference();
 startBpl();
 </script>
 </body></html>
