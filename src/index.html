@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>APL Glyph Reference — BasedPL</title>
+<style>
+:root{--bg:#f5f5f7;--panel:#fff;--text:#171717;--muted:#707070;--line:#d9d9de;--accent:#0071e3;--key:#e9e9ed;--key2:#d8d8dd;--shadow:0 10px 35px #00000018}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font:14px -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",sans-serif}
+header{position:sticky;top:0;z-index:20;background:#ffffffdd;backdrop-filter:blur(18px);border-bottom:1px solid var(--line);padding:12px 22px;display:flex;gap:14px;align-items:center}
+h1{font-size:20px;margin:0;font-weight:700}.sub{color:var(--muted);font-size:12px}
+.search{flex:1;max-width:480px;margin-left:auto}.search input{width:100%;padding:10px 14px;border:1px solid var(--line);border-radius:10px;font-size:14px;background:#f7f7f8}
+button{font:inherit}.topbtn{border:1px solid var(--line);background:var(--panel);border-radius:9px;padding:8px 11px;cursor:pointer}
+main{max-width:1500px;margin:0 auto;padding:22px}
+section{background:var(--panel);border:1px solid var(--line);border-radius:16px;box-shadow:0 2px 10px #00000006;margin-bottom:18px}
+.sectionhead{padding:17px 19px 8px;display:flex;justify-content:space-between;align-items:center}.sectionhead h2{margin:0;font-size:16px}
+.keyboard-wrap{padding:14px 18px 20px;overflow:auto}.keyboard{min-width:920px;display:flex;flex-direction:column;gap:7px}
+.krow{display:flex;gap:7px}.key{outline:none}
+.key:focus-visible,.glyph-target:focus-visible{outline:2px solid var(--accent);outline-offset:2px;z-index:3}
+.key.pressed,.glyph-target.pressed{transform:translateY(1px);box-shadow:inset 0 2px 4px #00000018}
+.glyph-target{display:inline-flex;align-items:center;justify-content:center;border-radius:5px;cursor:pointer}
+.key{height:66px;min-width:58px;flex:1;border:1px solid #c7c7cc;border-radius:8px;background:linear-gradient(#f4f4f6,#dedee2);box-shadow:inset 0 1px #fff,0 2px 2px #00000018;position:relative;padding:6px;cursor:pointer;text-align:left}.key:hover{border-color:var(--accent);transform:translateY(-1px)}.key .glyph{font-size:25px;font-family:"APL385 Unicode","DejaVu Sans",sans-serif;display:block;text-align:center;line-height:29px}.key .ordinary{position:absolute;bottom:4px;left:7px;font-size:11px;color:#555}.key .second{font-size:14px;color:#444}.key.wide{min-width:90px}.key.space{min-width:330px}.key.active{outline:3px solid var(--accent);outline-offset:1px}
+.legend{padding:0 18px 14px;color:var(--muted);font-size:12px}
+.grid{padding:14px 18px 20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px}
+.glyph-card{border:1px solid var(--line);border-radius:11px;padding:11px;background:#fff;cursor:pointer}.glyph-card:hover{border-color:var(--accent);background:#fafcff}.big{font-size:30px;line-height:34px}.name{font-weight:650;margin-top:4px}.meta{color:var(--muted);font-size:11px;margin-top:4px}.star{float:right;border:0;background:none;cursor:pointer;font-size:17px}
+.follow{padding:12px 18px 20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px}.follow div{padding:9px;border:1px solid var(--line);border-radius:9px;background:#fafafa}.follow b{font-family:monospace}
+.drawer{position:fixed;inset:0;z-index:50;background:#00000055;display:none}.drawer.open{display:block}.panel{position:absolute;right:0;top:0;height:100%;width:min(680px,96vw);background:#fff;box-shadow:-15px 0 50px #0003;overflow:auto}.phead{position:sticky;top:0;background:#ffffffee;backdrop-filter:blur(15px);padding:15px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;z-index:2}.phead .glyph{font-size:44px}.close{margin-left:auto;border:0;background:#eee;border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:18px}.body{padding:18px}.tag{display:inline-block;padding:4px 8px;border-radius:7px;background:#eef5ff;color:#075db7;font-size:11px;margin:2px}.ref{display:flex;gap:8px;margin:14px 0}.ref a{padding:8px 11px;border:1px solid var(--line);border-radius:8px;text-decoration:none;color:var(--accent);background:#fff}.block{border:1px solid var(--line);border-radius:12px;padding:13px;margin:12px 0}.block h3{margin:0 0 8px;font-size:13px}.code{background:#1e1e1e;color:#f5f5f5;border-radius:8px;padding:11px;white-space:pre-wrap;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}.note{width:100%;min-height:110px;border:1px solid var(--line);border-radius:9px;padding:10px;font:13px inherit;resize:vertical}.example-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}.example-row input{padding:8px;border:1px solid var(--line);border-radius:7px}.add{border:1px dashed #aaa;background:#fafafa;padding:9px;border-radius:8px;cursor:pointer}.iframe{width:100%;height:520px;border:1px solid var(--line);border-radius:10px;margin-top:10px}
+.empty{padding:25px;color:var(--muted);text-align:center}.small{font-size:12px;color:var(--muted)}
+@media(max-width:700px){header{flex-wrap:wrap}.search{order:3;flex-basis:100%;max-width:none}main{padding:10px}.grid{grid-template-columns:repeat(auto-fill,minmax(135px,1fr))}}
+</style>
+</head>
+<body>
+<header>
+  <div><h1>APL Glyph Reference</h1><div class="sub">BasedPL · interactive Mac keyboard + personal notes</div></div>
+  <div class="search"><input id="search" placeholder="Search glyphs, names, keys…  ⌘K"></div>
+  <button class="topbtn" id="favOnly">☆ Favorites</button>
+  <button class="topbtn" id="exportBtn">Export</button>
+  <button class="topbtn" id="importBtn">Import</button>
+  <input type="file" id="importFile" accept=".json" hidden>
+</header>
+
+<main>
+<section>
+<div class="sectionhead"><h2>Mac / US keyboard</h2><span class="small">Option = Alt · click any APL glyph</span></div>
+<div class="keyboard-wrap"><div id="keyboard" class="keyboard"></div></div>
+<div class="legend">BasedPL uses the US-based Mac map: hold Option for the large character, add Shift for the small character, and release Option for follow-up/dead-key sequences.</div>
+</section>
+
+<section>
+<div class="sectionhead"><h2>Glyph reference</h2><span id="count" class="small"></span></div>
+<div id="glyphGrid" class="grid"></div>
+</section>
+
+<section>
+<div class="sectionhead"><h2>Option follow-ups / dead keys</h2><span class="small">click a glyph in the result</span></div>
+<div id="followups" class="follow"></div>
+</section>
+</main>
+
+<div id="drawer" class="drawer">
+ <div class="panel">
+  <div class="phead"><div id="dGlyph" class="glyph"></div><div><div id="dName" style="font-size:18px;font-weight:700"></div><div id="dKey" class="sub"></div></div><button class="close" id="close">×</button></div>
+  <div class="body">
+   <div id="dSummary"></div>
+   <div class="ref"><a id="sourceLink" target="_blank" rel="noopener">Full BasedPL reference ↗</a><a href="https://answerdotai.github.io/basedpl/keyboard.html" target="_blank" rel="noopener">Keyboard map ↗</a></div>
+   <div class="block"><h3>My notes</h3><textarea id="notes" class="note" placeholder="Your own explanation, mnemonic, differences, gotchas…"></textarea></div>
+   <div class="block"><h3>My examples</h3><div id="examples"></div><button class="add" id="addExample">＋ Add example</button></div>
+   <div class="block"><h3>Complete reference</h3><div class="small">The official BasedPL page below contains the full definition and examples. This is loaded directly in your browser; the app itself needs no backend.</div><iframe id="deep" class="iframe" title="BasedPL full glyph reference"></iframe></div>
+  </div>
+ </div>
+</div>
+
+<script>
+const DATA = {"glyphs": [{"glyph": "+", "name": "add", "key": "", "monad": "conjugate", "dyad": "plus", "note": "", "slug": "add"}, {"glyph": "-", "name": "dash", "key": "", "monad": "negate", "dyad": "subtract", "note": "", "slug": "dash"}, {"glyph": "×", "name": "mul", "key": "Alt-m", "monad": "sign", "dyad": "times", "note": "", "slug": "mul"}, {"glyph": "÷", "name": "div", "key": "Alt-u", "monad": "reciprocal", "dyad": "divide", "note": "", "slug": "div"}, {"glyph": "⌊", "name": "floor", "key": "Alt-d", "monad": "floor", "dyad": "min", "note": "", "slug": "floor"}, {"glyph": "⌈", "name": "ceiling", "key": "Alt-s", "monad": "ceiling", "dyad": "max", "note": "", "slug": "ceiling"}, {"glyph": "\\", "name": "stile", "key": "", "monad": "magnitude", "dyad": "residue", "note": "", "slug": "stile"}, {"glyph": "*", "name": "star", "key": "", "monad": "exponential", "dyad": "exponent", "note": "", "slug": "star"}, {"glyph": "⍟", "name": "log", "key": "Alt-o *", "monad": "logarithm", "dyad": "log", "note": "", "slug": "log"}, {"glyph": "○", "name": "circle", "key": "Alt-o", "monad": "cis", "dyad": "circle", "note": "", "slug": "circle"}, {"glyph": "π", "name": "pi", "key": "Alt-p", "monad": "pi-times", "dyad": "pi-ratio", "note": "", "slug": "pi"}, {"glyph": "√", "name": "root", "key": "Alt-3", "monad": "sqrt", "dyad": "root", "note": "", "slug": "root"}, {"glyph": "!", "name": "factorial", "key": "", "monad": "factorial", "dyad": "binomial", "note": "", "slug": "factorial"}, {"glyph": "⍭", "name": "prime", "key": "Alt-\\ ~", "monad": "prime", "dyad": "prime-mode", "note": "", "slug": "prime"}, {"glyph": "⨸", "name": "factor", "key": "Alt-o u", "monad": "factors", "dyad": "factor-spec", "note": "", "slug": "factor"}, {"glyph": "⌻", "name": "polynomial", "key": "Alt-q t", "monad": "roots", "dyad": "polyval", "note": "", "slug": "polynomial"}, {"glyph": "¿", "name": "inverted-question", "key": "Alt-/", "monad": "roll", "dyad": "deal", "note": "", "slug": "inverted-question"}, {"glyph": "∨", "name": "or", "key": "Alt-9", "monad": "real-imag", "dyad": "gcd", "note": "", "slug": "or"}, {"glyph": "∧", "name": "and", "key": "Alt-0", "monad": "polar", "dyad": "lcm", "note": "", "slug": "and"}, {"glyph": "⍲", "name": "nand", "key": "Alt-0 ~", "monad": "square", "dyad": "nand", "note": "", "slug": "nand"}, {"glyph": "⍱", "name": "nor", "key": "Alt-9 ~", "monad": "double", "dyad": "nor", "note": "", "slug": "nor"}, {"glyph": "~", "name": "tilde", "key": "", "monad": "not", "dyad": "without", "note": "", "slug": "tilde"}, {"glyph": "=", "name": "equal", "key": "", "monad": "classify", "dyad": "equal", "note": "", "slug": "equal"}, {"glyph": "≠", "name": "not-equal", "key": "Alt-Shift-=", "monad": "unique-mask", "dyad": "not-equal", "note": "", "slug": "not-equal"}, {"glyph": "<", "name": "less", "key": "", "monad": "—", "dyad": "less", "note": "", "slug": "less"}, {"glyph": "≤", "name": "less-or-equal", "key": "Alt-<", "monad": "decrement", "dyad": "less-equal", "note": "", "slug": "less-or-equal"}, {"glyph": ">", "name": "greater", "key": "", "monad": "—", "dyad": "greater", "note": "", "slug": "greater"}, {"glyph": "≥", "name": "greater-or-equal", "key": "Alt->", "monad": "increment", "dyad": "greater-equal", "note": "", "slug": "greater-or-equal"}, {"glyph": "≡", "name": "match", "key": "Alt-=", "monad": "depth", "dyad": "match", "note": "", "slug": "match"}, {"glyph": "≢", "name": "tally", "key": "Alt-= /", "monad": "tally", "dyad": "not-match", "note": "", "slug": "tally"}, {"glyph": "⍴", "name": "rho", "key": "Alt-r", "monad": "shape", "dyad": "reshape", "note": "", "slug": "rho"}, {"glyph": ",", "name": "comma", "key": "", "monad": "ravel", "dyad": "catenate", "note": "", "slug": "comma"}, {"glyph": "⍪", "name": "table", "key": "Alt-Minus ,", "monad": "table", "dyad": "catenate-first", "note": "", "slug": "table"}, {"glyph": "⌽", "name": "reverse", "key": "Alt-|", "monad": "reverse", "dyad": "rotate", "note": "", "slug": "reverse"}, {"glyph": "⊖", "name": "reverse-first", "key": "Alt-o Minus", "monad": "reverse-first", "dyad": "rotate-first", "note": "", "slug": "reverse-first"}, {"glyph": "⍉", "name": "transpose", "key": "Alt-o \\", "monad": "transpose", "dyad": "reorder-axes", "note": "", "slug": "transpose"}, {"glyph": "↑", "name": "take", "key": "Alt-k", "monad": "first", "dyad": "take", "note": "", "slug": "take"}, {"glyph": "↓", "name": "drop", "key": "Alt-j", "monad": "split", "dyad": "drop", "note": "", "slug": "drop"}, {"glyph": "↕", "name": "windows", "key": "Alt-k j", "monad": "—", "dyad": "windows", "note": "", "slug": "windows"}, {"glyph": "⊂", "name": "enclose", "key": "Alt-z", "monad": "enclose", "dyad": "partitioned-enclose", "note": "", "slug": "enclose"}, {"glyph": "⊆", "name": "nest", "key": "Alt-z _", "monad": "nest", "dyad": "partition", "note": "", "slug": "nest"}, {"glyph": "⊃", "name": "mix", "key": "Alt-x", "monad": "mix", "dyad": "pick", "note": "", "slug": "mix"}, {"glyph": "⌷", "name": "squad", "key": "Alt-q", "monad": "", "dyad": "materialise / index", "note": "", "slug": "squad"}, {"glyph": "⍳", "name": "iota", "key": "Alt-i", "monad": "iota", "dyad": "index-of", "note": "", "slug": "iota"}, {"glyph": ":", "name": "colon", "key": "", "monad": "unkey", "dyad": "keyed", "note": "", "slug": "colon"}, {"glyph": "⍸", "name": "where", "key": "Alt-i _", "monad": "where", "dyad": "interval-index", "note": "", "slug": "where"}, {"glyph": "∊", "name": "member", "key": "Alt-e", "monad": "enlist", "dyad": "member", "note": "", "slug": "member"}, {"glyph": "∪", "name": "union", "key": "Alt-v", "monad": "unique", "dyad": "union", "note": "", "slug": "union"}, {"glyph": "∩", "name": "intersection", "key": "Alt-c", "monad": "—", "dyad": "intersection", "note": "", "slug": "intersection"}, {"glyph": "⍷", "name": "find", "key": "Alt-e _", "monad": "—", "dyad": "find", "note": "", "slug": "find"}, {"glyph": "⍋", "name": "grade-up", "key": "Alt-7", "monad": "", "dyad": "grade-up", "note": "", "slug": "grade-up"}, {"glyph": "⍒", "name": "grade-down", "key": "Alt-g", "monad": "", "dyad": "grade-down", "note": "", "slug": "grade-down"}, {"glyph": "#", "name": "hash", "key": "", "monad": "—", "dyad": "replicate", "note": "", "slug": "hash"}, {"glyph": "⊤", "name": "encode", "key": "Alt-n", "monad": "binary-encode", "dyad": "encode", "note": "", "slug": "encode"}, {"glyph": "⊥", "name": "decode", "key": "Alt-b", "monad": "binary-decode", "dyad": "decode", "note": "", "slug": "decode"}, {"glyph": "⌹", "name": "domino", "key": "Alt-q u", "monad": "inverse", "dyad": "matrix-divide", "note": "", "slug": "domino"}, {"glyph": "⊣", "name": "left", "key": "Alt-;", "monad": "same-left", "dyad": "left", "note": "", "slug": "left"}, {"glyph": "⊢", "name": "right", "key": "Alt-'", "monad": "same", "dyad": "right", "note": "", "slug": "right"}, {"glyph": "⍎", "name": "execute", "key": "Alt-b t", "monad": "execute", "dyad": "execute-in", "note": "", "slug": "execute"}, {"glyph": "⍕", "name": "format", "key": "Alt-n t", "monad": "format", "dyad": "format-spec", "note": "", "slug": "format"}, {"glyph": "/", "name": "slash", "key": "", "monad": "", "dyad": "Reduce / seeded reduce last", "note": "", "slug": "slash"}, {"glyph": "⌿", "name": "slash-bar", "key": "Alt-Minus /", "monad": "", "dyad": "Reduce / seeded reduce first", "note": "", "slug": "slash-bar"}, {"glyph": "⍀", "name": "backslash-bar", "key": "Alt-Minus \\", "monad": "", "dyad": "Scan / seeded scan first", "note": "", "slug": "backslash-bar"}, {"glyph": "¨", "name": "each", "key": "Alt-1", "monad": "", "dyad": "Each", "note": "", "slug": "each"}, {"glyph": "⍨", "name": "commute", "key": "Alt-1 ~", "monad": "", "dyad": "Self / commute / constant", "note": "", "slug": "commute"}, {"glyph": "↣", "name": "before", "key": "Alt-.", "monad": "", "dyad": "Before / bind left", "note": "", "slug": "before"}, {"glyph": "↢", "name": "after", "key": "Alt-,", "monad": "", "dyad": "After / bind right", "note": "", "slug": "after"}, {"glyph": "⍤", "name": "rank", "key": "Alt-1 t", "monad": "", "dyad": "Rank", "note": "", "slug": "rank"}, {"glyph": "∘", "name": "atop", "key": "Alt-t", "monad": "", "dyad": "Atop", "note": "", "slug": "atop"}, {"glyph": "⍠", "name": "axis", "key": "Alt-q :", "monad": "", "dyad": "Apply along axes", "note": "", "slug": "axis"}, {"glyph": "⍥", "name": "over", "key": "Alt-1 o", "monad": "", "dyad": "Over", "note": "", "slug": "over"}, {"glyph": ".", "name": "dot", "key": "", "monad": "", "dyad": "Inner product", "note": "", "slug": "dot"}, {"glyph": "⊗", "name": "outer-product", "key": "Alt-o m", "monad": "", "dyad": "Outer product", "note": "", "slug": "outer-product"}, {"glyph": "⌸", "name": "key", "key": "Alt-q =", "monad": "", "dyad": "Key", "note": "", "slug": "key"}, {"glyph": "⍣", "name": "power", "key": "Alt-1 *", "monad": "", "dyad": "Iterate / invert / fixed point", "note": "", "slug": "power"}, {"glyph": "⇄", "name": "inverse-pair", "key": "Alt-4", "monad": "", "dyad": "Attach explicit inverse", "note": "", "slug": "inverse-pair"}, {"glyph": "⊘", "name": "valences", "key": "Alt-o /", "monad": "", "dyad": "Call with one/two arguments", "note": "", "slug": "valences"}, {"glyph": "⌾", "name": "under", "key": "Alt-o t", "monad": "", "dyad": "Apply under", "note": "", "slug": "under"}, {"glyph": "∂", "name": "derivative", "key": "Alt-f", "monad": "", "dyad": "Gradient / VJP", "note": "", "slug": "derivative"}, {"glyph": "⍚", "name": "agenda", "key": "Alt-` _", "monad": "", "dyad": "Select and call one function", "note": "", "slug": "agenda"}, {"glyph": "@", "name": "at", "key": "", "monad": "", "dyad": "Functional amend", "note": "", "slug": "at"}, {"glyph": "⌺", "name": "stencil", "key": "Alt-q `", "monad": "", "dyad": "Stencil", "note": "", "slug": "stencil"}, {"glyph": "←", "name": "assign", "key": "Alt-h", "monad": "", "dyad": "Assignment", "note": "", "slug": "assign"}, {"glyph": "→", "name": "pipe", "key": "Alt-l", "monad": "", "dyad": "Left-to-right application", "note": "", "slug": "pipe"}, {"glyph": "⍺", "name": "alpha", "key": "Alt-a", "monad": "", "dyad": "Left argument", "note": "", "slug": "alpha"}, {"glyph": "⍵", "name": "omega", "key": "Alt-w", "monad": "", "dyad": "Right argument", "note": "", "slug": "omega"}, {"glyph": "⍶", "name": "alpha-underbar", "key": "Alt-a _", "monad": "", "dyad": "Left operand", "note": "", "slug": "alpha-underbar"}, {"glyph": "⍹", "name": "omega-underbar", "key": "Alt-w _", "monad": "", "dyad": "Right operand", "note": "", "slug": "omega-underbar"}, {"glyph": "∇", "name": "del", "key": "Alt-g", "monad": "", "dyad": "Function/operator self-reference", "note": "", "slug": "del"}, {"glyph": "⍢", "name": "del-diaeresis", "key": "Alt-1 g", "monad": "", "dyad": "Function/operator self-reference", "note": "", "slug": "del-diaeresis"}, {"glyph": "?", "name": "question", "key": "", "monad": "", "dyad": "Predicate", "note": "", "slug": "question"}, {"glyph": "::", "name": "error-guard", "key": "", "monad": "", "dyad": "Error guard", "note": "", "slug": "error-guard"}, {"glyph": "⋄", "name": "diamond", "key": "Alt-`", "monad": "", "dyad": "Statement/row separator", "note": "", "slug": "diamond"}, {"glyph": "⍝", "name": "comment", "key": "Alt-c t", "monad": "", "dyad": "Comment", "note": "", "slug": "comment"}, {"glyph": "⎕", "name": "quad", "key": "Alt-q", "monad": "", "dyad": "Explicit output/input", "note": "", "slug": "quad"}, {"glyph": "•", "name": "bullet", "key": "Alt-y", "monad": "", "dyad": "System function prefix", "note": "", "slug": "bullet"}, {"glyph": "⍬", "name": "zilde", "key": "Alt-Shift-0", "monad": "", "dyad": "Empty numeric vector", "note": "", "slug": "zilde"}, {"glyph": "¯", "name": "overbar", "key": "Alt-Minus", "monad": "", "dyad": "Negative literal sign", "note": "", "slug": "overbar"}, {"glyph": "∞", "name": "infinity", "key": "Alt-8", "monad": "", "dyad": "Real infinity", "note": "", "slug": "infinity"}, {"glyph": "²", "name": "superscript", "key": "Alt-6", "monad": "", "dyad": "Postfix exponent", "note": "", "slug": "superscript"}, {"glyph": "⁻¹", "name": "superscript inverse", "key": "Alt-6 -1", "monad": "", "dyad": "Inverse", "note": "", "slug": "superscript-inverse"}, {"glyph": "ᵀ", "name": "superscript transpose", "key": "Alt-6 t", "monad": "", "dyad": "Transpose", "note": "", "slug": "superscript-transpose"}, {"glyph": "₁", "name": "subscript", "key": "Alt-5 1", "monad": "", "dyad": "Index/subscript", "note": "", "slug": "subscript"}], "keyboard": [[["`", "⋄", "¨"], ["1", "¨", ""], ["2", "2", ""], ["3", "√", ""], ["4", "⇄", ""], ["5", "_", ""], ["6", "^", ""], ["7", "∆", ""], ["8", "∞", ""], ["9", "∨", ""], ["0", "⍬∧", ""], ["-", "¯", ""], ["=", "+≠≡", ""], ["delete", "Delete", ""]], [["tab", "Tab", ""], ["q", "⎕", ""], ["w", "⍵", ""], ["e", "∊", ""], ["r", "⍴", ""], ["t", "∘", ""], ["y", "•", ""], ["u", "÷", ""], ["i", "⍳", ""], ["o", "○", ""], ["p", "π", ""], ["[", "[", ""], ["]", "]", ""], ["\\", "⌽", ""]], [["caps", "Caps", ""], ["a", "⍺", ""], ["s", "⌈", ""], ["d", "⌊", ""], ["f", "∂", ""], ["g", "∇", ""], ["h", "←", ""], ["j", "↓", ""], ["k", "↑", ""], ["l", "→", ""], [";", "⊣", ""], ["'", "⊢", ""], ["enter", "Enter", ""]], [["shift", "Shift", ""], ["z", "⊂", ""], ["x", "⊃", ""], ["c", "∩", ""], ["v", "∪", ""], ["b", "⊥", ""], ["n", "⊤", ""], ["m", "×", ""], [",", "≤↢", ""], [".", "≥↣", ""], ["/", "¿", ""], ["shift2", "Shift", ""]], [["ctrl", "Ctrl", ""], ["opt", "Opt", ""], ["cmd", "Cmd", ""], ["space", "Space", ""], ["cmd2", "Cmd", ""], ["opt2", "Opt", ""], ["ctrl2", "Ctrl", ""]]], "followups": [["`", "`⋄", "_ / - → ⍚"], ["1", "¨", "t→⍤ · o→⍥ · *→⍣ · ~→⍨ · g→⍢"], ["5", "_", "0–9→₀–₉ · x→ₓ · j→ⱼ · e→ₑ · r→ᵣ · -0–9→₋₀–₉"], ["6", "^", "0–9→⁰–⁹ · -0–9→⁻⁰–⁹ · t→ᵀ · u→ᵘ"], ["7", "∆", "|/\\→⍋ · _/-→⍙"], ["9", "∨", "~/`→⍱"], ["0", "∧", "~/`→⍲"], ["-", "¯", ",→⍪ · \\→⍀ · /→⌿"], ["=", "≡", "/→≢"], ["q", "⎕", "t→⌻ · :/;→⍠ · =→⌸ · u→⌹ · |/\\→⌷ · `→⌺"], ["w", "⍵", "_/-→⍹"], ["e", "∊", "_/-→⍷"], ["i", "⍳", "_/-→⍸"], ["o", "○", "-→⊖ · \\→⍉ · /→⊘ · */8→⍟ · m→⊗ · u→⨸ · t→⌾"], ["\\", "|", "~/`→⍭"], ["a", "⍺", "_/-→⍶"], ["g", "∇", "|/\\→⍒"], ["k", "↑", "j→↕"], ["z", "⊂", "_/-→⊆"], ["c", "∩", "t→⍝"], ["b", "⊥", "t→⍎"], ["n", "⊤", "t→⍕"]], "examples": {"⍳": [["Basic indices", "⍳4", "0 1 2 3"], ["Index-of", "\"abc\"⍳\"cabz\"", "[2 0 1 3]ₓ"], ["Coordinates", "⍳2 2", "[[0 0] [0 1] ⋄ [1 0] [1 1]]"]], "⍴": [["Shape", "⍴2 3⍴0", "[2 3]ₓ"], ["Reshape", "2 3⍴1 2", "[1 2 1 ⋄ 2 1 2]"], ["Keyed axes", "\"month\"⌷⍴M", "3ₓ"]], "⍤": [["Row sums", "+/⍤1 m", "3 12"], ["Rank zero", "≢⍤0 v", "[1 1]ₓ"]], "∘": [["Function composition", "2 -∘+ 3", "¯5"]], "⍣": [["Iterate", "2×⍣3(1)", "8"], ["Fixed point", "n⍣∞(1)", "1.414213562373095"]], "⍺": [["Left argument", "{⍺+⍵} 2 3", "5"]], "⍵": [["Right argument", "{⍵×2} 5", "10"]], "⌽": [["Reverse", "⌽1 2 3", "3 2 1"]], "↑": [["First", "↑1 2 3", "1"]], "↓": [["Drop", "2↓1 2 3 4", "3 4"]], "⊂": [["Enclose", "⊂1 2 3", "a nested array"]], "∪": [["Unique", "∪1 2 1 3", "1 2 3"]], "∩": [["Intersection", "1 2 3 ∩ 2 3 4", "2 3"]], "⊤": [["Encode", "2 2 ⊤ 3", "[1 1]"]], "⊥": [["Decode", "2 ⊥ 1 1", "3"]], "÷": [["Reciprocal", "÷4", "0.25"]], "√": [["Square root", "√9", "3"]], "⌊": [["Floor", "⌊3.7", "3"]], "⌈": [["Ceiling", "⌈3.2", "4"]]}};
+const examples = DATA.examples;
+const glyphs = DATA.glyphs;
+const byGlyph = Object.fromEntries(glyphs.map(x=>[x.glyph,x]));
+let current = null, favOnly = false;
+
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function slugFor(g){return g.slug || g.name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}
+function sourceFor(g){return `https://answerdotai.github.io/basedpl/glyphs/${slugFor(g)}.html`}
+function storeKey(g){return 'apl-ref:'+g.glyph}
+function getUser(g){try{return JSON.parse(localStorage.getItem(storeKey(g))||'{}')}catch{return {}}}
+function saveUser(g,u){localStorage.setItem(storeKey(g),JSON.stringify(u))}
+
+function keyboardGlyphMatches(label){
+  // Match actual glyph records rather than guessing from Unicode ranges.
+  // This catches ordinary ASCII primitives such as +, -, *, /, =, <, >, etc.
+  return glyphs
+    .map(g=>g.glyph)
+    .filter(g=>label.includes(g))
+    .sort((a,b)=>b.length-a.length);
+}
+function activateKeyboardTarget(target){
+  const glyph=target.dataset.glyph;
+  if(glyph && byGlyph[glyph]) openGlyph(glyph);
+}
+function makeKeyboardTarget(el, glyph, label){
+  el.dataset.glyph=glyph;
+  el.tabIndex=0;
+  el.setAttribute('role','button');
+  el.setAttribute('aria-label',`${glyph} — ${byGlyph[glyph].name}`);
+  el.addEventListener('click',()=>activateKeyboardTarget(el));
+  el.addEventListener('keydown',e=>{
+    if(e.key==='Enter' || e.key===' '){
+      e.preventDefault();
+      activateKeyboardTarget(el);
+      el.classList.add('pressed');
+      setTimeout(()=>el.classList.remove('pressed'),100);
+    }
+  });
+}
+function renderKeyboard(){
+ const root=document.getElementById('keyboard'); root.innerHTML='';
+ DATA.keyboard.forEach(row=>{
+   const r=document.createElement('div'); r.className='krow';
+   row.forEach(k=>{
+     const [key,g,second]=k;
+     const b=document.createElement('button');
+     b.type='button';
+     b.tabIndex=-1;
+     b.className='key '+(['tab','caps','shift','shift2','enter','delete','ctrl','ctrl2','cmd','cmd2','opt','opt2'].includes(key)?'wide ':'')+(key==='space'?'space ':'');
+     const matches=keyboardGlyphMatches(g);
+     if(matches.length===1){
+       // A single glyph owns the complete physical key hitbox.
+       b.innerHTML=`<span class="glyph single-glyph">${esc(g)}</span><span class="ordinary">${esc(key.length>2?key.toUpperCase():key)}</span>`;
+       makeKeyboardTarget(b,matches[0],g);
+     }else if(matches.length>1){
+       // Composite keys keep independent targets for each glyph.
+       b.innerHTML=`<span class="glyph">${[...g].map(ch=>matches.includes(ch)?`<span class="glyph-target" tabindex="0" role="button" data-glyph="${esc(ch)}" aria-label="${esc(ch)} — ${esc(byGlyph[ch].name)}">${esc(ch)}</span>`:esc(ch)).join('')}</span><span class="ordinary">${esc(key.length>2?key.toUpperCase():key)}</span>`;
+       b.querySelectorAll('.glyph-target').forEach(t=>{
+         t.addEventListener('click',e=>{e.stopPropagation();activateKeyboardTarget(t)});
+         t.addEventListener('keydown',e=>{
+           if(e.key==='Enter' || e.key===' '){e.preventDefault();activateKeyboardTarget(t);t.classList.add('pressed');setTimeout(()=>t.classList.remove('pressed'),100);}
+         });
+       });
+     }else{
+       b.innerHTML=`<span class="glyph">${esc(g)}</span><span class="ordinary">${esc(key.length>2?key.toUpperCase():key)}</span>`;
+     }
+     r.appendChild(b);
+   }); root.appendChild(r);
+ });
+}
+function renderGrid(){
+ const q=document.getElementById('search').value.trim().toLowerCase();
+ const list=glyphs.filter(g=>{
+   const u=getUser(g); const text=[g.glyph,g.name,g.key,g.monad,g.dyad,g.note,u.notes].join(' ').toLowerCase();
+   return (!favOnly||u.favorite)&&(!q||text.includes(q));
+ });
+ document.getElementById('count').textContent=`${list.length} glyphs`;
+ const grid=document.getElementById('glyphGrid');
+ grid.innerHTML=list.length?list.map(g=>{
+   const u=getUser(g); return `<div class="glyph-card" data-g="${esc(g.glyph)}">
+    <button class="star" title="Favorite">${u.favorite?'★':'☆'}</button>
+    <div class="big">${esc(g.glyph)}</div><div class="name">${esc(g.name)}</div>
+    <div class="meta">${esc(g.key||'ASCII')} · ${esc(g.monad||'')} · ${esc(g.dyad||'')}</div>
+   </div>`
+ }).join(''):`<div class="empty">No matching glyphs.</div>`;
+ grid.querySelectorAll('.glyph-card').forEach(card=>{
+   card.onclick=e=>{if(e.target.closest('.star'))return;openGlyph(card.dataset.g)}
+   const star=card.querySelector('.star'); star.onclick=e=>{e.stopPropagation();const g=byGlyph[card.dataset.g],u=getUser(g);u.favorite=!u.favorite;saveUser(g,u);renderGrid()}
+ });
+}
+function renderFollowups(){
+ document.getElementById('followups').innerHTML=DATA.followups.map(x=>`<div><b>⌥${esc(x[0])}</b> → ${esc(x[1])}<br><span class="small">${esc(x[2])}</span></div>`).join('');
+}
+function openGlyph(ch){
+ const g=byGlyph[ch]; if(!g)return;
+ current=g; document.getElementById('drawer').classList.add('open');
+ document.getElementById('dGlyph').textContent=g.glyph;
+ document.getElementById('dName').textContent=g.name;
+ document.getElementById('dKey').textContent=g.key||'ASCII key';
+ document.getElementById('dSummary').innerHTML=`<span class="tag">${esc(g.monad||'')}</span><span class="tag">${esc(g.dyad||'')}</span>${g.note?`<p class="small">${esc(g.note)}</p>`:''}`;
+ const src=sourceFor(g); document.getElementById('sourceLink').href=src;
+ document.getElementById('deep').src=src;
+ const u=getUser(g); document.getElementById('notes').value=u.notes||'';
+ renderExamples();
+}
+function renderExamples(){
+ const root=document.getElementById('examples'); const g=current; const u=getUser(g);
+ const own=u.examples||[]; const built=examples[g.glyph]||[];
+ root.innerHTML=(built.length?`<div class="small">Built-in quick examples</div>`+built.map(e=>`<div class="block"><b>${esc(e[0])}</b><div class="code">${esc(e[1])}</div><div class="small">${esc(e[2])}</div></div>`).join(''):'')+
+ own.map((e,i)=>`<div class="example-row"><input data-i="${i}" data-f="title" value="${esc(e.title||'')}" placeholder="Title"><input data-i="${i}" data-f="code" value="${esc(e.code||'')}" placeholder="APL code"></div>`).join('');
+ root.querySelectorAll('input').forEach(inp=>inp.oninput=()=>{const u=getUser(g);u.examples=u.examples||[];u.examples[inp.dataset.i][inp.dataset.f]=inp.value;saveUser(g,u)});
+}
+document.getElementById('notes').oninput=()=>{if(!current)return;const u=getUser(current);u.notes=document.getElementById('notes').value;saveUser(current,u)}
+document.getElementById('addExample').onclick=()=>{const u=getUser(current);u.examples=u.examples||[];u.examples.push({title:'',code:''});saveUser(current,u);renderExamples()}
+document.getElementById('close').onclick=()=>document.getElementById('drawer').classList.remove('open');
+document.getElementById('drawer').onclick=e=>{if(e.target.id==='drawer')e.currentTarget.classList.remove('open')}
+document.getElementById('search').oninput=renderGrid;
+document.getElementById('favOnly').onclick=()=>{favOnly=!favOnly;document.getElementById('favOnly').textContent=favOnly?'★ Favorites':'☆ Favorites';renderGrid()}
+document.getElementById('exportBtn').onclick=()=>{
+ const saved={};glyphs.forEach(g=>{const u=getUser(g);if(Object.keys(u).length)saved[g.glyph]=u});
+ const blob=new Blob([JSON.stringify({version:1,exported:new Date().toISOString(),notes:saved},null,2)],{type:'application/json'});
+ const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='apl-reference-notes.json';a.click();URL.revokeObjectURL(a.href)
+}
+document.getElementById('importBtn').onclick=()=>document.getElementById('importFile').click();
+document.getElementById('importFile').onchange=e=>{
+ const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);Object.entries(d.notes||{}).forEach(([g,u])=>localStorage.setItem(storeKey(byGlyph[g]||{glyph:g}),JSON.stringify(u)));renderGrid();alert('Imported.')}catch{alert('Invalid notes file.')}};r.readAsText(f)
+}
+document.addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();document.getElementById('search').focus()}if(e.key==='Escape')document.getElementById('drawer').classList.remove('open')});
+renderKeyboard();renderGrid();renderFollowups();
+</script>
+</body></html>
