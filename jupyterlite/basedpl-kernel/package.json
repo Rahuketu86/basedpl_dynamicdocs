@@ -12,7 +12,7 @@
   ],
   "scripts": {
     "build": "jlpm build:lib && jlpm build:labextension:dev",
-    "build:lib": "tsc --sourceMap",
+    "build:lib": "tsc --sourceMap && cp src/basedpl_web.js lib/basedpl_web.js && cp src/basedpl_web_bg.wasm lib/basedpl_web_bg.wasm",
     "build:labextension:dev": "jupyter labextension build --development True ."
   },
   "dependencies": {
