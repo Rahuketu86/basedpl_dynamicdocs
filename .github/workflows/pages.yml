@@ -66,6 +66,28 @@ jobs:
         with:
           path: dist
 
+
+  e2e:
+    name: Browser E2E against deployed Pages
+    runs-on: ubuntu-latest
+    needs: deploy
+    env:
+      BASE_URL: https://rahuketu86.github.io/basedpl_dynamicdocs/
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Playwright
+        run: |
+          npm init -y
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run deployed browser E2E
+        run: node tests/e2e/repl.mjs
+
   deploy:
     environment:
       name: github-pages
