@@ -1,0 +1,75 @@
+name: Deploy BasedPL to Cloudflare Pages
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: "Successful Pages workflow run ID (leave blank for latest successful main build)"
+        required: false
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: cloudflare-pages-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy built site to Cloudflare Pages
+    runs-on: ubuntu-latest
+    steps:
+      - name: Find build run
+        id: run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_RUN_ID: ${{ inputs.run_id }}
+        run: |
+          set -euo pipefail
+
+          if [ -n "$INPUT_RUN_ID" ]; then
+            echo "run_id=$INPUT_RUN_ID" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          run_id=$(gh api \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/${GITHUB_REPOSITORY}/actions/workflows/pages.yml/runs?branch=main&status=success&per_page=1" \
+            --jq '.workflow_runs[0].id')
+
+          if [ -z "$run_id" ] || [ "$run_id" = "null" ]; then
+            echo "No successful Pages build run found on main."
+            exit 1
+          fi
+
+          echo "Using latest successful Pages build: $run_id"
+          echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+
+      - name: Download built site
+        uses: actions/download-artifact@v6
+        with:
+          name: github-pages
+          path: artifact
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.run.outputs.run_id }}
+
+      - name: Extract Pages artifact
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          tar -xf artifact/artifact.tar -C dist
+          test -f dist/index.html
+          echo "Built site:"
+          du -sh dist
+          find dist -maxdepth 2 -type f | head -50
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=basedpl
+
