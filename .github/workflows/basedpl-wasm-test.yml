@@ -53,7 +53,7 @@ jobs:
             ['⍳5', '0 1 2 3 4']
           ]);
           for (const [code, want] of expected) {
-            const result = s.eval(code);
+            const result = JSON.parse(s.eval(code));
             console.log('EVAL', JSON.stringify(code), JSON.stringify(result));
             if (!result || typeof result !== 'object') process.exit(1);
             if (result.error) process.exit(1);
