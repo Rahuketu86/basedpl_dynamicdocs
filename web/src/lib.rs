@@ -1,4 +1,5 @@
-use basedpl::{Session, EvalOptions};
+use basedpl::{EvalOptions, Session};
+use std::sync::{Arc, Mutex};
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
@@ -10,20 +11,51 @@ impl BplSession {
     pub fn new() -> Self { Self { session: Session::new() } }
 
     pub fn diagnostic(&mut self, code: &str) -> String {
-        let result = self.session.eval_with(code, EvalOptions::default());
-        let output_len = result.output.len();
+        let events = Arc::new(Mutex::new(Vec::<serde_json::Value>::new()));
+        let output = Arc::new(Mutex::new(String::new()));
+        let events_sink = events.clone();
+        let output_sink = output.clone();
+        let sink = Arc::new(move |event: &basedpl::Output| {
+            events_sink.lock().unwrap().push(event.json());
+            output_sink.lock().unwrap().push_str(&event.written());
+        });
+        let result = self.session.eval_with(code, EvalOptions {
+            output: Some(sink),
+            ..EvalOptions::default()
+        });
+        let event_count = events.lock().unwrap().len();
+        let output_len = output.lock().unwrap().len();
         let has_error = result.error.is_some();
         let has_value = result.value.is_some();
-        format!("eval-completed output={} error={} value={}", output_len, has_error, has_value)
+        format!("eval-completed events={} output={} error={} value={}", event_count, output_len, has_error, has_value)
     }
 
     pub fn eval(&mut self, code: &str) -> JsValue {
-        let result = self.session.eval_with(code, EvalOptions::default());
-        let output = result.output.iter().map(|o| o.written()).collect::<String>();
+        // Follow BasedPL's own Jupyter kernel: capture Output events rather than
+        // relying only on Evaluation.value. Implicit expression results are
+        // emitted as OutputKind::Display when echo=true.
+        let events = Arc::new(Mutex::new(Vec::<serde_json::Value>::new()));
+        let output = Arc::new(Mutex::new(String::new()));
+        let events_sink = events.clone();
+        let output_sink = output.clone();
+        let sink = Arc::new(move |event: &basedpl::Output| {
+            events_sink.lock().unwrap().push(event.json());
+            output_sink.lock().unwrap().push_str(&event.written());
+        });
+
+        let result = self.session.eval_with(code, EvalOptions {
+            output: Some(sink),
+            ..EvalOptions::default()
+        });
+
         let error = result.error.as_ref().map(ToString::to_string);
         let value = result.value.as_ref().map(|v| self.session.show(v));
+        let output = output.lock().unwrap().clone();
+        let events = events.lock().unwrap().clone();
+
         serde_wasm_bindgen::to_value(&serde_json::json!({
             "output": output,
+            "events": events,
             "error": error,
             "value": value
         })).unwrap()
