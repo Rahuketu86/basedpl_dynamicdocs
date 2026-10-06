@@ -11,12 +11,12 @@
     "build:labextension:dev": "jupyter labextension build --development True ."
   },
   "dependencies": {
-    "@jupyterlab/application": "^4.5.0",
-    "@jupyterlab/services": "^7.5.0",
-    "@jupyterlite/services": "^0.7.0"
+    "@jupyterlab/application": "4.5.11",
+    "@jupyterlab/services": "7.5.11",
+    "@jupyterlite/services": "0.7.6"
   },
   "devDependencies": {
-    "@jupyterlab/builder": "^4.5.0",
+    "@jupyterlab/builder": "4.5.11",
     "@types/node": "^22.0.0",
     "typescript": "~5.0.2"
   },
