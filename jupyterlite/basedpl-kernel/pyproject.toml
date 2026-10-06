@@ -1,0 +1,24 @@
+[build-system]
+requires = ["hatchling>=1.5.0", "jupyterlab>=4.5.0,<5", "hatch-nodejs-version>=0.3.2", "hatch-jupyter-builder>=0.5"]
+build-backend = "hatchling.build"
+
+[project]
+name = "jupyterlite_basedpl_kernel"
+version = "0.1.0"
+description = "BasedPL kernel for JupyterLite"
+requires-python = ">=3.10"
+dependencies = []
+
+[tool.hatch.build.targets.wheel.shared-data]
+"jupyterlite_basedpl_kernel/labextension" = "share/jupyter/labextensions/@rahuketu86/basedpl-kernel"
+"install.json" = "share/jupyter/labextensions/@rahuketu86/basedpl-kernel"
+
+[tool.hatch.build.hooks.jupyter-builder]
+dependencies = ["hatch-jupyter-builder>=0.5"]
+build-function = "hatch_jupyter_builder.npm_builder"
+ensured-targets = ["jupyterlite_basedpl_kernel/labextension/package.json"]
+skip-if-exists = ["jupyterlite_basedpl_kernel/labextension/package.json"]
+
+[tool.hatch.build.hooks.jupyter-builder.build-kwargs]
+build_cmd = "build:labextension:dev"
+npm = ["jlpm"]
