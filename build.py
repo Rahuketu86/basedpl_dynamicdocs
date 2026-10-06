@@ -23,4 +23,17 @@ for path in DIST.iterdir():
         shutil.rmtree(path)
 
 shutil.copy2(SRC, DIST / "index.html")
-print(f"Built {DIST / 'index.html'}")
+
+# The WASM bundle is produced by CI before this script runs.
+WASM_BUILD = ROOT / "build" / "bpl"
+if WASM_BUILD.exists():
+    target = DIST / "bpl"
+    target.mkdir(parents=True, exist_ok=True)
+    for path in WASM_BUILD.iterdir():
+        if path.is_file():
+            shutil.copy2(path, target / path.name)
+    shutil.copy2(ROOT / "web" / "worker.js", target / "worker.js")
+else:
+    raise SystemExit(f"Missing WASM build: {WASM_BUILD}")
+
+print(f"Built {DIST / 'index.html'} and {DIST / 'bpl'}")
