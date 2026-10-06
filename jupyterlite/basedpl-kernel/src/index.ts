@@ -4,15 +4,17 @@ import {
 } from '@jupyterlab/application';
 import type { IKernel } from '@jupyterlite/services';
 import { IKernelSpecs } from '@jupyterlite/services';
+import { INotebookTracker } from '@jupyterlab/notebook';
 import { BasedPLKernel } from './kernel.js';
 
 const kernel: JupyterFrontEndPlugin<void> = {
   id: '@rahuketu86/basedpl-kernel:kernel',
   autoStart: true,
-  requires: [IKernelSpecs],
+  requires: [IKernelSpecs, INotebookTracker],
   activate: (
     app: JupyterFrontEnd,
-    kernelspecs: IKernelSpecs
+    kernelspecs: IKernelSpecs,
+    notebookTracker: INotebookTracker
   ) => {
     kernelspecs.register({
       spec: {
@@ -29,95 +31,119 @@ const kernel: JupyterFrontEndPlugin<void> = {
         new BasedPLKernel(options)
     });
 
-    // Minimal first step: inject a floating input bar only.
-    // Completion, keyboard mapping, and cell execution are intentionally
-    // disabled until the basic UI is confirmed working in JupyterLite.
+    // Simple glyph palette. Clicking a glyph inserts it into the last
+    // active notebook cell; no WASM/completion path is involved.
+    const glyphs = [
+      '⌈', '⌊', '⍉', '⌽', '⊖', '⍋', '⍒', '⍪', '⌿', '⍀',
+      '↑', '↓', '→', '←', '↕', '↢', '↣', '∇', '∆', '⍺',
+      '⍵', '⍳', '⍸', '∊', '⍷', '⍴', '⍬', '⎕', '⌷', '⌺',
+      '⌸', '⌹', '⍠', '∘', '•', '○', '⊂', '⊆', '∩', '∪',
+      '⊃', '⊥', '⊤', '×', '÷', '≠', '≡', '≢', '≤', '≥',
+      '√', '∞', '∧', '∨', '⍲', '⍱', '⊣', '⊢', 'π', '¿'
+    ];
+
     const root = document.createElement('div');
-    root.id = 'basedpl-floating-input';
-    root.innerHTML = `
-      <div class="bpl-floating-main">
-        <span class="bpl-floating-prompt">&gt;</span>
-        <textarea rows="1" aria-label="BasedPL input" placeholder="BasedPL input"></textarea>
-        <button type="button" class="bpl-floating-run" title="Insert into active cell and run">↵</button>
-      </div>
-    `;
+    root.id = 'basedpl-glyph-bar';
+    root.setAttribute('aria-label', 'BasedPL glyph palette');
+
+    const last = {
+      editor: null as any,
+      cell: null as any
+    };
+
+    const rememberActiveCell = () => {
+      const cell = notebookTracker.activeCell;
+      if (cell?.editor) {
+        last.cell = cell;
+        last.editor = cell.editor;
+      }
+    };
+
+    notebookTracker.activeCellChanged.connect(rememberActiveCell);
+    notebookTracker.currentChanged.connect(rememberActiveCell);
+    rememberActiveCell();
+
+    for (const glyph of glyphs) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'bpl-glyph-button';
+      button.textContent = glyph;
+      button.title = 'Insert ' + glyph;
+      button.setAttribute('aria-label', 'Insert ' + glyph);
+      button.addEventListener('mousedown', event => {
+        // Keep the notebook editor selection/cursor while clicking the palette.
+        event.preventDefault();
+      });
+      button.addEventListener('click', () => {
+        const editor = last.editor;
+        if (!editor) return;
+        editor.focus();
+        editor.replaceSelection(glyph);
+      });
+      root.appendChild(button);
+    }
 
     document.body.appendChild(root);
 
-    const input = root.querySelector('textarea') as HTMLTextAreaElement;
-    const runButton = root.querySelector('.bpl-floating-run') as HTMLButtonElement;
-
     const style = document.createElement('style');
     style.textContent = `
-      #basedpl-floating-input {
+      #basedpl-glyph-bar {
         position: fixed;
         top: 58px;
         left: 50%;
         transform: translateX(-50%);
-        width: min(720px, calc(100vw - 32px));
+        width: min(920px, calc(100vw - 24px));
         z-index: 1000;
-        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      }
-
-      #basedpl-floating-input .bpl-floating-main {
         display: flex;
-        align-items: flex-start;
-        gap: 8px;
-        padding: 8px 10px;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
+        padding: 6px;
+        box-sizing: border-box;
         background: var(--jp-layout-color1);
         border: 1px solid var(--jp-border-color2);
-        border-radius: 10px;
-        box-shadow: var(--jp-elevation-z6);
+        border-radius: 9px;
+        box-shadow: var(--jp-elevation-z4);
       }
 
-      #basedpl-floating-input .bpl-floating-prompt {
-        color: var(--jp-brand-color1);
-        font-weight: 700;
-        padding-top: 3px;
-      }
-
-      #basedpl-floating-input textarea {
-        flex: 1;
-        min-width: 0;
-        max-height: 120px;
-        resize: none;
-        border: 0;
-        outline: 0;
+      #basedpl-glyph-bar .bpl-glyph-button {
+        min-width: 32px;
+        height: 32px;
+        padding: 0 6px;
+        border: 1px solid transparent;
+        border-radius: 5px;
         background: transparent;
         color: var(--jp-ui-font-color1);
-        font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
-      }
-
-      #basedpl-floating-input .bpl-floating-run {
-        border: 1px solid var(--jp-border-color2);
-        background: var(--jp-layout-color2);
-        color: var(--jp-ui-font-color1);
-        border-radius: 7px;
-        min-width: 30px;
-        height: 30px;
+        font: 19px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
         cursor: pointer;
       }
 
+      #basedpl-glyph-bar .bpl-glyph-button:hover {
+        background: var(--jp-layout-color2);
+        border-color: var(--jp-border-color2);
+      }
+
+      #basedpl-glyph-bar .bpl-glyph-button:active {
+        background: var(--jp-brand-color3);
+      }
+
       @media (max-width: 700px) {
-        #basedpl-floating-input {
+        #basedpl-glyph-bar {
           top: 52px;
-          width: calc(100vw - 16px);
+          width: calc(100vw - 8px);
+          gap: 1px;
+          padding: 4px;
+        }
+
+        #basedpl-glyph-bar .bpl-glyph-button {
+          min-width: 29px;
+          height: 29px;
+          font-size: 17px;
         }
       }
     `;
     document.head.appendChild(style);
-
-    const resize = () => {
-      input.style.height = 'auto';
-      input.style.height = Math.min(input.scrollHeight, 120) + 'px';
-    };
-
-    input.addEventListener('input', resize);
-    runButton.addEventListener('click', () => {
-      input.focus();
-    });
-
-    resize();
   }
 };
 
