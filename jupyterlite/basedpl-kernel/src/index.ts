@@ -151,7 +151,7 @@ const kernel: JupyterFrontEndPlugin<void> = {
       const currentPos = editor.getOffsetAt(editor.getCursorPosition());
       const currentCode = editor.model.sharedModel.getSource();
       const currentMatch = /\x60([A-Za-z_][A-Za-z0-9_]*)?$/.exec(currentCode.slice(0, currentPos));
-      if (!currentMatch || currentPos !== pos) return;
+      if (!currentMatch || currentPos !== pos || currentMatch[0] !== match[0]) return;
 
       popup.replaceChildren();
       for (const item of matches) {
