@@ -162,13 +162,10 @@ const kernel: JupyterFrontEndPlugin<void> = {
     const toggle = document.createElement('button');
     toggle.className = 'ngn_o'; toggle.title = 'Toggle overlay/push-down';
     bar.append(close, toggle);
-    const tip = document.createElement('div');
-    tip.className = 'bpl_choices'; tip.setAttribute('role', 'group'); tip.setAttribute('aria-label', 'BPL symbol completions'); tip.hidden = true;
-    host.append(bar, tip);
+    host.append(bar);
     document.body.appendChild(host);
 
-    let overlay = false;
-    try { overlay = localStorage.getItem('ngn_lb_overlay') === '1'; } catch {}
+    let collapsed = false;
     // Mac/US physical keyboard layout. Each key shows the glyph produced by Option+key.
     const keyboardRows = [
       ['`','1','2','3','4','5','6','7','8','9','0','-','='],
@@ -199,79 +196,36 @@ const kernel: JupyterFrontEndPlugin<void> = {
     }
 
     const reflow = () => {
-      toggle.textContent = overlay ? '▼' : '▲';
-      document.body.style.paddingTop = overlay || bar.hidden ? '' : bar.offsetHeight + 'px';
+      toggle.textContent = collapsed ? '＋' : '−';
+      toggle.title = collapsed ? 'Expand Mac keyboard' : 'Collapse Mac keyboard';
+      bar.classList.toggle('bpl_collapsed', collapsed);
+      document.body.style.paddingTop = bar.hidden || collapsed ? '' : bar.offsetHeight + 'px';
     };
-    const cancel = () => { active = undefined; choice = undefined; tip.hidden = true; tip.replaceChildren(); };
-    const show = (e: EditorAdapter, start: number, found: GlyphChoice[]) => {
-      tip.replaceChildren();
-      for (const x of found) {
-        const b = document.createElement('button');
-        b.type = 'button'; b.dataset.glyph = x.glyph; b.textContent = x.glyph + ' ' + x.name; tip.appendChild(b);
-      }
-      if (!found.length) { const n = document.createElement('small'); n.textContent = 'Unknown symbol'; tip.appendChild(n); }
-      const r = e.rect();
-      tip.hidden = false;
-      const popupWidth = Math.min(Math.max(tip.offsetWidth, 180), 360);
-      const left = Math.max(4, Math.min(r.left, innerWidth - popupWidth - 8));
-      const top = Math.max(4, Math.min(r.bottom + 4, innerHeight - tip.offsetHeight - 8));
-      tip.style.left = left + 'px';
-      tip.style.top = top + 'px';
-      choice = { editor: e, start, found };
-    };
-
-    const matchesGlyphs = async (query: string): Promise<GlyphChoice[]> => {
-      if (!activeKernel) return [];
-      try {
-        const reply = await activeKernel.completeRequest({ code: String.fromCharCode(96) + query, cursor_pos: query.length + 1 });
-        if ('matches' in reply) return reply.matches.map((g: string) => ({ glyph: String(g), name: glyphNames[String(g)] ?? String(g) })).slice(0, 32);
-      } catch {}
-      return [];
-    };
-
-    const refresh = async (target: EventTarget | null) => {
-      const e = editor();
-      if (!e) { cancel(); return; }
-      const body = 0;
-      const start = e.text.lastIndexOf(String.fromCharCode(96), e.pos - 1);
-      if (start < body || !e.empty) { cancel(); return; }
-      const query = e.text.slice(start + 1, e.pos);
-      if (!/^[a-z]*$/i.test(query)) { cancel(); return; }
-      const found = await matchesGlyphs(query);
-      const now = editor();
-      if (!now || now.id !== e.id || now.pos !== e.pos || now.text !== e.text) return;
-      if (!active || active.id !== e.id || active.start !== start) return;
-      show(e, start, found);
-    };
+    const cancel = () => { active = undefined; };
 
     bar.addEventListener('mousedown', ev => {
       ev.preventDefault();
       const remembered = last.editor;
       const b = (ev.target as HTMLElement).closest('button') as HTMLButtonElement | null;
       if (!b) return;
-      if (b === close) { bar.hidden = true; reflow(); }
-      else if (b === toggle) {
-        overlay = !overlay;
-        try { localStorage.setItem('ngn_lb_overlay', overlay ? '1' : '0'); } catch {}
+      if (b === close) {
+        bar.hidden = true;
+        reflow();
+      } else if (b === toggle) {
+        collapsed = !collapsed;
         reflow();
       } else if (b.dataset.glyph && remembered) {
-        remembered.insert(b.dataset.glyph);
+        remembered.insert(b.dataset.glyph, remembered.pos);
       }
-      cancel();
     });
-    tip.addEventListener('mousedown', ev => {
-      ev.preventDefault();
-      const b = (ev.target as HTMLElement).closest('button') as HTMLButtonElement | null;
-      if (b?.dataset.glyph && choice) choice.editor.insert(b.dataset.glyph, choice.start);
-      cancel();
-    });
+
 
     const remember = () => { last.editor = editor(); };
     notebookTracker.activeCellChanged.connect(() => { remember(); cancel(); });
     notebookTracker.currentChanged.connect(() => { remember(); cancel(); });
     document.addEventListener('focusin', () => { const e = editor(); if (e) last.editor = e; }, true);
     document.addEventListener('pointerup', ev => { if (!host.contains(ev.target as Node)) remember(); }, true);
-    for (const event of ['paste', 'cut', 'compositionstart', 'focusout']) document.addEventListener(event, cancel, true);
+    for (const event of ['paste', 'cut', 'compositionstart']) document.addEventListener(event, cancel, true);
     document.addEventListener('input', ev => {
       if (!keyInput || ((ev as InputEvent).inputType !== 'insertText' && (ev as InputEvent).inputType !== 'deleteContentBackward')) cancel();
       keyInput = false;
@@ -300,33 +254,15 @@ const kernel: JupyterFrontEndPlugin<void> = {
         if (pressed.text) e.insert(pressed.text);
         if (pressed.stop) { cancel(); ev.preventDefault(); ev.stopImmediatePropagation(); return; }
       }
-      const start = e.text.lastIndexOf(String.fromCharCode(96), e.pos - 1);
-      const query = start >= 0 ? e.text.slice(start + 1, e.pos) : '';
-      const item = start >= 0 && e.empty && /^[a-z]*$/i.test(query);
-      const typed = !!active && active.id === e.id && active.start === start;
-
-      // First Tab opens the glyph list. A second Tab commits the selected/first glyph.
-      if (item && ev.key === 'Tab' && plain && !ev.shiftKey) {
-        const currentChoice = choice;
-        if (currentChoice && currentChoice.editor.id === e.id && currentChoice.start === start) {
-          if (currentChoice.found.length) {
-            e.insert(currentChoice.found[0].glyph, start);
-            cancel();
-          }
-        } else {
-          active = { id: e.id, start };
-          void refresh(ev.target);
-        }
-        ev.preventDefault();
-        ev.stopImmediatePropagation();
-        return;
+      // Let the browser/editor insert the backtick first, then invoke JupyterLab's
+      // native notebook completer. Its popup is anchored to the real editor cursor
+      // and supports mouse clicks, arrows and Enter.
+      if (ev.key === String.fromCharCode(96) && plain) {
+        requestAnimationFrame(() => {
+          void app.commands.execute('completer:invoke-notebook');
+        });
       }
 
-      if (ev.key === String.fromCharCode(96) && plain) {
-        const updated = editor();
-        if (updated && updated.empty) { active = { id: updated.id, start: updated.pos }; }
-        else cancel();
-      } else if (!(typed && plain && (/^[a-z]$/i.test(ev.key) || ev.key === 'Backspace'))) cancel();
       keyInput = plain && (ev.key.length === 1 || ev.key === 'Backspace');
     }, true);
 
@@ -336,7 +272,9 @@ const kernel: JupyterFrontEndPlugin<void> = {
     const style = document.createElement('style');
     style.textContent = [
       '#basedpl-input-host { position: fixed; inset: 0; z-index: 2147483647; pointer-events: none; }',
-      '#basedpl-input-host .ngn_lb { position: fixed; top: 0; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100vw - 24px); box-sizing: border-box; pointer-events: auto; background: #eee; color: #111; font: 15px ui-monospace, SFMono-Regular, Menlo, monospace; border: 1px solid #999; border-top: 0; border-radius: 0 0 9px 9px; padding: 8px 52px 9px; display: flex; flex-direction: column; align-items: center; gap: 5px; z-index: 2147483647; box-shadow: 0 2px 8px #0002; }',
+      '#basedpl-input-host .ngn_lb { position: fixed; top: 0; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100vw - 16px); box-sizing: border-box; pointer-events: auto; background: #eee; color: #111; font: 15px ui-monospace, SFMono-Regular, Menlo, monospace; border: 1px solid #999; border-top: 0; border-radius: 0 0 10px 10px; padding: 8px 58px 9px; display: flex; flex-direction: column; align-items: center; gap: 5px; z-index: 2147483647; box-shadow: 0 2px 8px #0002; }',
+      '#basedpl-input-host .ngn_lb.bpl_collapsed { padding: 3px 46px; min-height: 32px; }',
+      '#basedpl-input-host .bpl_collapsed .bpl_keyrow { display: none; }',
       '#basedpl-input-host .bpl_keyrow { display: flex; justify-content: center; align-items: center; gap: 5px; width: max-content; }',
       '#basedpl-input-host .bpl_key { flex: 0 0 68px; width: 68px; height: 52px; padding: 3px; border: 1px solid #aaa; border-radius: 7px; background: #ddd; color: #111; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; box-sizing: border-box; user-select: none; }',
       '#basedpl-input-host .bpl_key:hover { background: #bbb; }',
@@ -344,16 +282,12 @@ const kernel: JupyterFrontEndPlugin<void> = {
       '#basedpl-input-host .bpl_key.unmapped { opacity: .3; }',
       '#basedpl-input-host .bpl_glyph { display: block; width: 100%; font-size: 30px; line-height: 31px; min-height: 31px; text-align: center; }',
       '#basedpl-input-host .bpl_keylabel { display: block; width: 100%; font-size: 11px; line-height: 13px; opacity: .65; text-align: center; }',
-      '#basedpl-input-host .ngn_x, #basedpl-input-host .ngn_o { position: absolute; top: 7px; border: 0; background: transparent; color: inherit; cursor: pointer; font-size: 22px; padding: 4px 7px; z-index: 3; }',
+      '#basedpl-input-host .ngn_x, #basedpl-input-host .ngn_o { position: absolute; top: 5px; border: 0; background: transparent; color: inherit; cursor: pointer; font-size: 22px; padding: 4px 7px; z-index: 3; }',
       '#basedpl-input-host .ngn_x { right: 5px; }',
       '#basedpl-input-host .ngn_o { right: 40px; }',
-      '#basedpl-input-host .bpl_choices { position: fixed; display: flex; flex-direction: column; align-items: stretch; width: max-content; min-width: 190px; max-width: min(360px, calc(100vw - 16px)); max-height: 300px; overflow-y: auto; overflow-x: hidden; pointer-events: auto; box-sizing: border-box; background: #eee; color: #111; border: 1px solid #888; border-radius: 6px; box-shadow: 0 3px 14px #0004; padding: 4px; z-index: 2147483647; }',
-      '#basedpl-input-host .bpl_choices button { display: block; flex: 0 0 auto; width: 100%; box-sizing: border-box; text-align: left; white-space: nowrap; font: 18px ui-monospace, SFMono-Regular, Menlo, monospace; color: inherit; background: none; border: 0; cursor: pointer; padding: 7px 10px; }',
-      '#basedpl-input-host .bpl_choices button:hover { background: #777; color: white; }',
-      '#basedpl-input-host .bpl_choices small { display: block; padding: 6px 9px; }',
-      '@media(max-width: 900px) { #basedpl-input-host .bpl_key { flex-basis: 48px; width: 48px; height: 46px; } #basedpl-input-host .bpl_glyph { font-size: 25px; } #basedpl-input-host .bpl_keyrow { gap: 2px; } #basedpl-input-host .ngn_lb { padding-left: 8px; padding-right: 48px; } }',
-      '@media(prefers-color-scheme:dark) { #basedpl-input-host .ngn_lb, #basedpl-input-host .bpl_choices { background: #222; color: #ddd; } #basedpl-input-host .bpl_key { background: #333; border-color: #666; color: #ddd; } #basedpl-input-host .bpl_key:hover { background: #555; } }'
-    ].join('\n');
+      '@media(max-width: 1100px) { #basedpl-input-host .bpl_key { flex-basis: 52px; width: 52px; height: 48px; } #basedpl-input-host .bpl_glyph { font-size: 26px; } #basedpl-input-host .bpl_keyrow { gap: 3px; } #basedpl-input-host .ngn_lb { padding-left: 8px; padding-right: 48px; } }',
+      '@media(prefers-color-scheme:dark) { #basedpl-input-host .ngn_lb { background: #222; color: #ddd; } #basedpl-input-host .bpl_key { background: #333; border-color: #666; color: #ddd; } #basedpl-input-host .bpl_key:hover { background: #555; } }'
+    ].join('\\n');
     document.head.appendChild(style);
   }
 };
