@@ -84,12 +84,23 @@ jobs:
             process.exit(1);
           }
           NODE
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
       - name: Install JupyterLite build dependencies
         run: |
           python -m pip install -r jupyterlite/requirements.txt
           cp build/bpl/basedpl_web.js jupyterlite/basedpl-kernel/src/basedpl_web.js
           cp build/bpl/basedpl_web_bg.wasm jupyterlite/basedpl-kernel/src/basedpl_web_bg.wasm
           python -m pip install -e ./jupyterlite/basedpl-kernel
+
+      - name: Validate BasedPL JupyterLite extension
+        working-directory: jupyterlite/basedpl-kernel
+        run: |
+          jlpm install --immutable
+          jlpm build:lib
 
       - name: Build site
         run: python build.py
