@@ -55,7 +55,24 @@ try {
     }
   }
 
-  console.log('Browser E2E passed: 3, 2+4, ⍳5, +/ 1 2 3');
+  await page.locator('#kbMacBtn').click();
+  await page.locator('.mac-glyph-target[data-glyph="⍳"]').click();
+  if (await input.inputValue() !== '⍳') {
+    throw new Error(`Mac keyboard did not insert ⍳: got ${JSON.stringify(await input.inputValue())}`);
+  }
+  await input.press('Enter');
+  await page.waitForFunction(
+    ({ count }) => document.querySelectorAll('.term-output').length >= count,
+    { count: cases.length + 1 },
+    { timeout: 5_000 }
+  );
+  const keyboardResult = outputs.last();
+  const keyboardText = (await keyboardResult.textContent())?.trim() || '';
+  if (keyboardText !== '0 1 2 3 4') {
+    throw new Error(`Unexpected Mac keyboard output: got ${JSON.stringify(keyboardText)}`);
+  }
+
+  console.log('Browser E2E passed: bar + Mac keyboard, 3, 2+4, ⍳5, +/ 1 2 3');
 } finally {
   await browser.close();
 }
