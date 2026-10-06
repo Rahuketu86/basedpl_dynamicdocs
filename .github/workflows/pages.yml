@@ -46,7 +46,7 @@ jobs:
           const { BplSession } = require('./build/diagnostic/basedpl_web.js');
           const s = new BplSession();
           for (const [code, expected] of [['12+4', '16'], ['⍳5', '0 1 2 3 4'], ['+/ 1 2 3', '6']]) {
-            const result = s.eval(code);
+            const result = JSON.parse(s.eval(code));
             console.log('EVAL', JSON.stringify(code), JSON.stringify(result));
             if (result.error) process.exit(1);
             const display = (result.events || [])
