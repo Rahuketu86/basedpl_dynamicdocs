@@ -84,9 +84,11 @@ const kernel: JupyterFrontEndPlugin<void> = {
           (Object.values(macLayout.alt_aliases ?? {}).includes(key) ? key : null))
         : null;
       if (pending) {
-        const state = macLayout.states[pending];
+        const stateName = pending;
+        const state = macLayout.states[stateName];
+        const repeated = action?.state === stateName;
         pending = null;
-        if (action?.state === Object.keys(macLayout.states).find(k => macLayout.states[k] === state)) return { text: state.terminator, stop: true };
+        if (repeated) return { text: state.terminator, stop: true };
         if (plain && ev.key === ' ') return { text: state.terminator, stop: true };
         if (ev.key === 'Backspace' || ev.key === 'Escape') return { text: '', stop: true };
         if (plain && key && key in state.keys) {
@@ -109,20 +111,29 @@ const kernel: JupyterFrontEndPlugin<void> = {
     function editor(): EditorAdapter | null {
       const cell: any = notebookTracker.activeCell;
       const ed: any = cell?.editor;
-      const view: any = ed?.editor?.cm?.view ?? ed?.editor?.view ?? ed?.cm?.view;
-      if (!view?.state || view.state.readOnly) return null;
-      const sel = view.state.selection.main;
+      if (!ed || ed.readOnly) return null;
+      const cursor = ed.getCursorPosition?.();
+      if (!cursor) return null;
+      const selection = ed.getSelection?.();
+      const pos = ed.getOffsetAt(cursor);
+      const from = selection ? ed.getOffsetAt(selection.start) : pos;
+      const to = selection ? ed.getOffsetAt(selection.end) : pos;
       return {
-        id: view, text: view.state.doc.toString(), pos: sel.head, empty: sel.empty,
-        rect: () => view.coordsAtPos(sel.head),
-        insert: (text: string, from = view.state.selection.main.from) => {
-          const current = view.state.selection.main;
-          view.dispatch({
-            changes: { from, to: current.to, insert: text },
-            selection: { anchor: from + text.length },
-            userEvent: 'input.complete'
-          });
-          view.focus();
+        id: ed,
+        text: ed.model.sharedModel.getSource(),
+        pos,
+        empty: from === to,
+        rect: () => {
+          const r = ed.host.getBoundingClientRect();
+          return { left: r.left, bottom: r.bottom };
+        },
+        insert: (text: string, fromOffset = from) => {
+          const currentCursor = ed.getCursorPosition();
+          const currentSelection = ed.getSelection?.();
+          const endOffset = currentSelection ? ed.getOffsetAt(currentSelection.end) : ed.getOffsetAt(currentCursor);
+          ed.setSelection(ed.getPositionAt(fromOffset), ed.getPositionAt(endOffset));
+          ed.replaceSelection(text);
+          ed.focus();
         }
       };
     }
