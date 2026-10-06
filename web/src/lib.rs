@@ -30,7 +30,7 @@ impl BplSession {
         format!("eval-completed events={} output={} error={} value={}", event_count, output_len, has_error, has_value)
     }
 
-    pub fn eval(&mut self, code: &str) -> JsValue {
+    pub fn eval(&mut self, code: &str) -> String {
         // Follow BasedPL's own Jupyter kernel: capture Output events rather than
         // relying only on Evaluation.value. Implicit expression results are
         // emitted as OutputKind::Display when echo=true.
@@ -53,7 +53,10 @@ impl BplSession {
         let output = output.lock().unwrap().clone();
         let events = events.lock().unwrap().clone();
 
-        serde_wasm_bindgen::to_value(&serde_json::json!({
+        // Return JSON text rather than a JsValue object. This is intentionally
+        // boring: the wasm-bindgen Node and browser targets both receive the
+        // exact same wire representation, and the Worker can JSON.parse it.
+        serde_json::to_string(&serde_json::json!({
             "output": output,
             "events": events,
             "error": error,
