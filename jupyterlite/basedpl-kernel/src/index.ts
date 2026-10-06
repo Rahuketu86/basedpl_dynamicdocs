@@ -250,6 +250,20 @@ const kernel: JupyterFrontEndPlugin<void> = {
     });
 
     input.addEventListener('keydown', event => {
+      const option = event.altKey && !event.ctrlKey && !event.metaKey;
+      const pressed = bplInput.press(event, option);
+      if (pressed?.text) {
+        event.preventDefault();
+        event.stopPropagation();
+        const start = input.selectionStart ?? input.value.length;
+        const end = input.selectionEnd ?? start;
+        input.setRangeText(pressed.text, start, end, 'end');
+        resize();
+        if (pressed.stop) {
+          void showCompletion();
+          return;
+        }
+      }
       if (event.key === 'Tab' && !completion.hidden) {
         event.preventDefault();
         void acceptCompletion(0);
@@ -273,6 +287,7 @@ const kernel: JupyterFrontEndPlugin<void> = {
       void acceptCompletion(index);
     });
 
+    input.addEventListener('blur', () => bplInput.reset());
     runButton.addEventListener('click', () => void insertAndRun());
     resize();
   }
