@@ -80,7 +80,7 @@ const kernel: JupyterFrontEndPlugin<void> = {
       const key = usKey(ev);
       const plain = !ev.altKey && !ev.ctrlKey && !ev.metaKey;
       const action = option && ev.altKey && !ev.ctrlKey && !ev.metaKey
-        ? (macLayout.alt_aliases?.[ev.key] ?? macLayout.option?.[key] ??
+        ? (macLayout.alt_aliases?.[ev.key] ?? (key ? macLayout.option?.[key] : null) ??
           (Object.values(macLayout.alt_aliases ?? {}).includes(key) ? key : null))
         : null;
       if (pending) {
