@@ -2,7 +2,7 @@ import init, { BplSession } from './basedpl_web.js';
 
 type Request =
   | { id: number; type: 'eval'; code: string }
-  | { id: number; type: 'complete'; prefix: string };
+  | { id: number; type: 'complete'; prefix: string; glyphs?: boolean };
 
 let session: BplSession | null = null;
 
@@ -34,7 +34,9 @@ self.onmessage = event => {
       self.postMessage({
         id: request.id,
         type: 'complete',
-        matches: session.complete(request.prefix)
+        matches: request.glyphs
+          ? session.complete_glyphs(request.prefix)
+          : session.complete(request.prefix)
       });
     }
   } catch (error) {
