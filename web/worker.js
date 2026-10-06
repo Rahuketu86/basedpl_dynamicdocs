@@ -7,6 +7,7 @@ async function start() {
   session = new BplSession();
   postMessage({ type: 'ready' });
 }
+
 start().catch(error => postMessage({ type: 'fatal', error: String(error) }));
 
 self.onmessage = event => {
@@ -14,15 +15,22 @@ self.onmessage = event => {
   if (event.data?.type === 'eval') {
     try {
       const result = session.eval(event.data.code || '');
-      const data = result ? result : {};
+      const data = result || {};
       postMessage({
         type: 'result',
         code: event.data.code || '',
         output: data.output || '',
+        value: data.value == null ? '' : String(data.value),
         error: data.error || ''
       });
     } catch (error) {
-      postMessage({ type: 'result', code: event.data.code || '', error: String(error), output: '' });
+      postMessage({
+        type: 'result',
+        code: event.data.code || '',
+        output: '',
+        value: '',
+        error: String(error)
+      });
     }
   }
 };
