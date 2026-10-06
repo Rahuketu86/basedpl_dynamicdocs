@@ -32,14 +32,25 @@ jobs:
           test -n "$WASM"
           wasm-bindgen "$WASM" --target web --out-dir build/bpl
           wasm-bindgen "$WASM" --target nodejs --out-dir build/diagnostic
-      - name: Run evaluator diagnostic
+      - name: Test evaluation without rendering
         run: |
           node - <<'NODE'
           const { BplSession } = require('./build/diagnostic/basedpl_web.js');
           const s = new BplSession();
-          for (const code of ['12+4', '+/ 12 4 3']) {
+          for (const code of ['12+4', '+/ 12 4 3', '⍳5']) {
             const result = s.diagnostic(code);
             console.log('DIAGNOSTIC', JSON.stringify(code), result);
             if (!result.startsWith('eval-completed ')) process.exit(1);
+          }
+          NODE
+      - name: Test public eval path and rendering
+        run: |
+          node - <<'NODE'
+          const { BplSession } = require('./build/diagnostic/basedpl_web.js');
+          const s = new BplSession();
+          for (const code of ['12+4', '⍳5']) {
+            const result = s.eval(code);
+            console.log('EVAL', JSON.stringify(code), JSON.stringify(result));
+            if (!result || typeof result !== 'object') process.exit(1);
           }
           NODE
