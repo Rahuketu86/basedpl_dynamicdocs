@@ -60,7 +60,7 @@ const kernel: JupyterFrontEndPlugin<void> = {
     rememberActiveCell();
 
     // BasedPL-style backtick discovery, implemented directly in the CodeMirror cell.
-    let activeQuery: { editor: any; start: number } | null = null;
+    let activeQuery: { editor: any; start: number; matches: Array<{glyph: string; name: string}> } | null = null;
 
     const glyphNames: Record<string, string> = {
       '√':'sqrt','∞':'infinity','⍬':'zilde','⍴':'rho','∘':'jot','÷':'divide',
@@ -146,8 +146,14 @@ const kernel: JupyterFrontEndPlugin<void> = {
         return;
       }
 
-      popup.replaceChildren();
       const matches = await matchesGlyphs(match[1] ?? '');
+      if (editor !== notebookTracker.activeCell?.editor) return;
+      const currentPos = editor.getOffsetAt(editor.getCursorPosition());
+      const currentCode = editor.model.sharedModel.getSource();
+      const currentMatch = /\x60([A-Za-z_][A-Za-z0-9_]*)?$/.exec(currentCode.slice(0, currentPos));
+      if (!currentMatch || currentPos !== pos) return;
+
+      popup.replaceChildren();
       for (const item of matches) {
         const button = document.createElement('button');
         button.type = 'button';
@@ -176,7 +182,7 @@ const kernel: JupyterFrontEndPlugin<void> = {
       popup.style.left = Math.max(8, Math.min(rect.left, innerWidth - 320)) + 'px';
       popup.style.top = Math.min(innerHeight - 260, Math.max(8, rect.bottom + 4)) + 'px';
       popup.hidden = false;
-      activeQuery = { editor, start: pos - match[0].length };
+      activeQuery = { editor, start: pos - match[0].length, matches };
     };
 
     document.addEventListener('keydown', event => {
@@ -188,8 +194,8 @@ const kernel: JupyterFrontEndPlugin<void> = {
           const code = editor.model.sharedModel.getSource();
           const pos = editor.getOffsetAt(editor.getCursorPosition());
           const match = /\x60([A-Za-z_][A-Za-z0-9_]*)?$/.exec(code.slice(0, pos));
-          const matches = match ? await matchesGlyphs(match[1] ?? '') : [];
-          if (matches.length) {
+          const matches = activeQuery.matches;
+          if (match && matches.length) {
             editor.setSelection({
               start: editor.getPositionAt(pos - match[0].length),
               end: editor.getCursorPosition()
