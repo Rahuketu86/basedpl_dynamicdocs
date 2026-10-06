@@ -280,7 +280,7 @@ renderReplKeyboards();
 
 const replKeyboard=document.getElementById('replKeyboard');
 replKeyboard.addEventListener('mousedown',e=>{
-  const target=e.target.closest('.mac-glyph-target,.rkey');
+  const target=e.target.closest('.mac-glyph-target,.rkey,.mac-key');
   if(!target)return;
   e.preventDefault();
   insertReplText(target.dataset.glyph);
