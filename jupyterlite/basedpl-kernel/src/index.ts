@@ -128,8 +128,16 @@ const kernel: JupyterFrontEndPlugin<void> = {
         pos,
         empty: from === to,
         rect: () => {
+          const cursorEl = ed.host.querySelector?.('.cm-cursor, .cm-cursor-primary, .cm-cursorLayer > *');
+          const cursorRect = cursorEl?.getBoundingClientRect?.();
+          if (cursorRect && cursorRect.width >= 0) return { left: cursorRect.left, bottom: cursorRect.bottom };
           const coordinate = ed.getCoordinateForPosition?.(ed.getCursorPosition());
-          if (coordinate) return { left: coordinate.left, bottom: coordinate.bottom };
+          if (coordinate) {
+            const hostRect = ed.host.getBoundingClientRect();
+            const left = coordinate.left >= hostRect.left ? coordinate.left : hostRect.left + coordinate.left;
+            const bottom = coordinate.bottom >= hostRect.top ? coordinate.bottom : hostRect.top + coordinate.bottom;
+            return { left, bottom };
+          }
           const r = ed.host.getBoundingClientRect();
           return { left: r.left, bottom: r.bottom };
         },
@@ -204,9 +212,9 @@ const kernel: JupyterFrontEndPlugin<void> = {
       if (!found.length) { const n = document.createElement('small'); n.textContent = 'Unknown symbol'; tip.appendChild(n); }
       const r = e.rect();
       tip.hidden = false;
-      const minTop = bar.hidden || overlay ? 4 : bar.offsetHeight + 4;
-      const left = Math.max(4, Math.min(r.left, innerWidth - Math.min(tip.offsetWidth, 360) - 8));
-      const top = Math.max(minTop, Math.min(r.bottom + 4, innerHeight - tip.offsetHeight - 8));
+      const popupWidth = Math.min(Math.max(tip.offsetWidth, 180), 360);
+      const left = Math.max(4, Math.min(r.left, innerWidth - popupWidth - 8));
+      const top = Math.max(4, Math.min(r.bottom + 4, innerHeight - tip.offsetHeight - 8));
       tip.style.left = left + 'px';
       tip.style.top = top + 'px';
       choice = { editor: e, start, found };
@@ -328,24 +336,24 @@ const kernel: JupyterFrontEndPlugin<void> = {
     const style = document.createElement('style');
     style.textContent = [
       '#basedpl-input-host { position: fixed; inset: 0; z-index: 2147483647; pointer-events: none; }',
-      '#basedpl-input-host .ngn_lb, #basedpl-input-host .bpl_choices { pointer-events: auto; background: #eee; color: #111; font: 15px ui-monospace, SFMono-Regular, Menlo, monospace; z-index: 2147483647; }',
-      '#basedpl-input-host .ngn_lb { position: fixed; top: 0; left: 0; right: 0; border-bottom: 1px solid #999; padding: 6px 58px 7px; display: flex; flex-direction: column; gap: 4px; align-items: center; box-sizing: border-box; }',
-      '#basedpl-input-host .bpl_keyrow { display: flex; gap: 4px; justify-content: center; width: max-content; }',
-      '#basedpl-input-host .bpl_key { width: 64px; height: 48px; padding: 3px 5px; border: 1px solid #aaa; border-radius: 6px; background: #ddd; color: #111; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; box-sizing: border-box; }',
+      '#basedpl-input-host .ngn_lb { position: fixed; top: 0; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100vw - 24px); box-sizing: border-box; pointer-events: auto; background: #eee; color: #111; font: 15px ui-monospace, SFMono-Regular, Menlo, monospace; border: 1px solid #999; border-top: 0; border-radius: 0 0 9px 9px; padding: 8px 52px 9px; display: flex; flex-direction: column; align-items: center; gap: 5px; z-index: 2147483647; box-shadow: 0 2px 8px #0002; }',
+      '#basedpl-input-host .bpl_keyrow { display: flex; justify-content: center; align-items: center; gap: 5px; width: max-content; }',
+      '#basedpl-input-host .bpl_key { flex: 0 0 68px; width: 68px; height: 52px; padding: 3px; border: 1px solid #aaa; border-radius: 7px; background: #ddd; color: #111; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; box-sizing: border-box; user-select: none; }',
       '#basedpl-input-host .bpl_key:hover { background: #bbb; }',
-      '#basedpl-input-host .bpl_key:active { transform: translateY(1px); }',
-      '#basedpl-input-host .bpl_key.unmapped { opacity: .35; }',
-      '#basedpl-input-host .bpl_glyph { display: block; font-size: 27px; line-height: 28px; min-height: 28px; text-align: center; }',
-      '#basedpl-input-host .bpl_keylabel { display: block; font-size: 11px; line-height: 12px; opacity: .7; text-align: center; }',
-      '#basedpl-input-host .ngn_x, #basedpl-input-host .ngn_o { position: absolute; top: 5px; border: 0; background: transparent; color: inherit; cursor: pointer; font-size: 22px; padding: 3px 7px; z-index: 2; }',
+      '#basedpl-input-host .bpl_key:active { transform: translateY(1px); background: #aaa; }',
+      '#basedpl-input-host .bpl_key.unmapped { opacity: .3; }',
+      '#basedpl-input-host .bpl_glyph { display: block; width: 100%; font-size: 30px; line-height: 31px; min-height: 31px; text-align: center; }',
+      '#basedpl-input-host .bpl_keylabel { display: block; width: 100%; font-size: 11px; line-height: 13px; opacity: .65; text-align: center; }',
+      '#basedpl-input-host .ngn_x, #basedpl-input-host .ngn_o { position: absolute; top: 7px; border: 0; background: transparent; color: inherit; cursor: pointer; font-size: 22px; padding: 4px 7px; z-index: 3; }',
       '#basedpl-input-host .ngn_x { right: 5px; }',
-      '#basedpl-input-host .ngn_o { right: 38px; }',
-      '#basedpl-input-host .bpl_choices { position: fixed; width: max-content; min-width: 150px; max-width: min(360px, calc(100vw - 16px)); max-height: 280px; overflow-y: auto; overflow-x: hidden; border: 1px solid #888; border-radius: 5px; box-shadow: 0 3px 12px #0003; padding: 4px; }',
-      '#basedpl-input-host .bpl_choices button { display: block; width: 100%; text-align: left; white-space: nowrap; font: inherit; color: inherit; background: none; border: 0; cursor: pointer; padding: 5px 8px; }',
+      '#basedpl-input-host .ngn_o { right: 40px; }',
+      '#basedpl-input-host .bpl_choices { position: fixed; display: flex; flex-direction: column; align-items: stretch; width: max-content; min-width: 190px; max-width: min(360px, calc(100vw - 16px)); max-height: 300px; overflow-y: auto; overflow-x: hidden; pointer-events: auto; box-sizing: border-box; background: #eee; color: #111; border: 1px solid #888; border-radius: 6px; box-shadow: 0 3px 14px #0004; padding: 4px; z-index: 2147483647; }',
+      '#basedpl-input-host .bpl_choices button { display: block; flex: 0 0 auto; width: 100%; box-sizing: border-box; text-align: left; white-space: nowrap; font: 18px ui-monospace, SFMono-Regular, Menlo, monospace; color: inherit; background: none; border: 0; cursor: pointer; padding: 7px 10px; }',
       '#basedpl-input-host .bpl_choices button:hover { background: #777; color: white; }',
-      '#basedpl-input-host .bpl_choices small { display: block; padding: 5px 8px; }',
+      '#basedpl-input-host .bpl_choices small { display: block; padding: 6px 9px; }',
+      '@media(max-width: 900px) { #basedpl-input-host .bpl_key { flex-basis: 48px; width: 48px; height: 46px; } #basedpl-input-host .bpl_glyph { font-size: 25px; } #basedpl-input-host .bpl_keyrow { gap: 2px; } #basedpl-input-host .ngn_lb { padding-left: 8px; padding-right: 48px; } }',
       '@media(prefers-color-scheme:dark) { #basedpl-input-host .ngn_lb, #basedpl-input-host .bpl_choices { background: #222; color: #ddd; } #basedpl-input-host .bpl_key { background: #333; border-color: #666; color: #ddd; } #basedpl-input-host .bpl_key:hover { background: #555; } }'
-    ].join('\\n');
+    ].join('\n');
     document.head.appendChild(style);
   }
 };
