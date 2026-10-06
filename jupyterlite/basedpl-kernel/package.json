@@ -4,7 +4,12 @@
   "description": "BasedPL kernel for JupyterLite",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
-  "files": ["lib/**/*", "src/**/*", "jupyterlite_basedpl_kernel/labextension/**/*", "install.json"],
+  "files": [
+    "lib/**/*",
+    "src/**/*",
+    "jupyterlite_basedpl_kernel/labextension/**/*",
+    "install.json"
+  ],
   "scripts": {
     "build": "jlpm build:lib && jlpm build:labextension:dev",
     "build:lib": "tsc --sourceMap",
@@ -24,8 +29,15 @@
     "extension": true,
     "outputDir": "jupyterlite_basedpl_kernel/labextension",
     "sharedPackages": {
-      "@jupyterlite/services": {"bundled": false, "singleton": true},
-      "@jupyterlab/services": {"bundled": false, "singleton": true}
+      "@jupyterlite/services": {
+        "bundled": false,
+        "singleton": true
+      },
+      "@jupyterlab/services": {
+        "bundled": false,
+        "singleton": true
+      }
     }
-  }
+  },
+  "type": "module"
 }
