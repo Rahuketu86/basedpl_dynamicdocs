@@ -20,15 +20,27 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      # Cache the generated runtime so frontend-only JupyterLite changes do not rebuild Rust.
+      - name: Restore BasedPL WASM cache
+        id: bpl-wasm-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: build/bpl
+          key: basedpl-wasm-${{ hashFiles('web/**', 'scripts/prepare_basedpl_wasm.sh') }}
+
       - name: Install Rust
+        if: steps.bpl-wasm-cache.outputs.cache-hit != 'true'
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
       - name: Install wasm-bindgen
+        if: steps.bpl-wasm-cache.outputs.cache-hit != 'true'
         run: cargo install wasm-bindgen-cli --version 0.2.129
       - name: Prepare patched BasedPL
+        if: steps.bpl-wasm-cache.outputs.cache-hit != 'true'
         run: bash scripts/prepare_basedpl_wasm.sh
       - name: Build BasedPL WASM
+        if: steps.bpl-wasm-cache.outputs.cache-hit != 'true'
         run: |
           rm -rf build/bpl
           cargo build --release --target wasm32-unknown-unknown --manifest-path web/Cargo.toml
@@ -84,6 +96,13 @@ jobs:
             process.exit(1);
           }
           NODE
+      - name: Save BasedPL WASM cache
+        if: steps.bpl-wasm-cache.outputs.cache-hit != 'true' && success()
+        uses: actions/cache/save@v4
+        with:
+          path: build/bpl
+          key: basedpl-wasm-${{ hashFiles('web/**', 'scripts/prepare_basedpl_wasm.sh') }}
+
       - name: Install Node
         uses: actions/setup-node@v4
         with:
