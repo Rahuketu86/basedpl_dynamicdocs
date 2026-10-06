@@ -13,29 +13,63 @@ type BplResult = {
   error: string | null;
 };
 
-type BplSession = {
-  eval(code: string): string;
-  complete(prefix: string): unknown;
+type Pending = {
+  resolve: (value: any) => void;
+  reject: (reason: unknown) => void;
 };
 
-let bplModule: Promise<any> | undefined;
-
-async function loadBpl(): Promise<any> {
-  if (!bplModule) {
-    bplModule = import('./basedpl_web.js');
-  }
-  return bplModule;
-}
-
 export class BasedPLKernel extends BaseKernel {
-  private session: BplSession | null = null;
+  private worker: Worker;
+  private ready: Promise<void>;
+  private pending = new Map<number, Pending>();
+  private nextId = 1;
 
-  private async getSession(): Promise<BplSession> {
-    if (!this.session) {
-      const mod = await loadBpl();
-      this.session = new mod.BplSession();
-    }
-    return this.session;
+  constructor(options: any) {
+    super(options);
+    this.worker = new Worker(new URL('./worker.ts', import.meta.url), {
+      type: 'module'
+    });
+
+    this.ready = new Promise((resolve, reject) => {
+      const onMessage = (event: MessageEvent) => {
+        if (event.data?.type === 'ready') {
+          this.worker.removeEventListener('message', onMessage);
+          resolve();
+        } else if (event.data?.type === 'fatal') {
+          this.worker.removeEventListener('message', onMessage);
+          reject(new Error(event.data.error));
+        }
+      };
+      this.worker.addEventListener('message', onMessage);
+    });
+
+    this.worker.onmessage = event => {
+      const message = event.data;
+      if (message.type === 'ready' || message.type === 'fatal') {
+        return;
+      }
+
+      const pending = this.pending.get(message.id);
+      if (!pending) {
+        return;
+      }
+      this.pending.delete(message.id);
+
+      if (message.type === 'error') {
+        pending.reject(new Error(message.error));
+      } else {
+        pending.resolve(message);
+      }
+    };
+  }
+
+  private async request(type: 'eval' | 'complete', payload: Record<string, unknown>): Promise<any> {
+    await this.ready;
+    const id = this.nextId++;
+    return new Promise((resolve, reject) => {
+      this.pending.set(id, { resolve, reject });
+      this.worker.postMessage({ id, type, ...payload });
+    });
   }
 
   async kernelInfoRequest(): Promise<KernelMessage.IInfoReplyMsg['content']> {
@@ -65,8 +99,27 @@ export class BasedPLKernel extends BaseKernel {
   async executeRequest(
     content: KernelMessage.IExecuteRequestMsg['content']
   ): Promise<KernelMessage.IExecuteReplyMsg['content']> {
-    const session = await this.getSession();
-    const result: BplResult = JSON.parse(session.eval(content.code));
+    let response: { result: BplResult };
+
+    try {
+      response = await this.request('eval', { code: content.code });
+    } catch (error) {
+      const message = String(error);
+      this.publishExecuteError({
+        ename: 'BasedPLKernelError',
+        evalue: message,
+        traceback: [message]
+      });
+      return {
+        status: 'error',
+        execution_count: this.executionCount,
+        ename: 'BasedPLKernelError',
+        evalue: message,
+        traceback: [message]
+      };
+    }
+
+    const result = response.result;
 
     if (!content.silent) {
       for (const event of result.events ?? []) {
@@ -112,7 +165,6 @@ export class BasedPLKernel extends BaseKernel {
   async completeRequest(
     content: KernelMessage.ICompleteRequestMsg['content']
   ): Promise<KernelMessage.ICompleteReplyMsg['content']> {
-    const session = await this.getSession();
     const beforeCursor = content.code.slice(0, content.cursor_pos);
     const match = beforeCursor.match(/[A-Za-z_][A-Za-z0-9_]*$/);
     const prefix = match?.[0] ?? beforeCursor;
@@ -120,9 +172,9 @@ export class BasedPLKernel extends BaseKernel {
       ? content.cursor_pos - prefix.length
       : content.cursor_pos;
 
-    const raw = session.complete(prefix);
-    const matches = Array.isArray(raw)
-      ? raw.map(item => String(item))
+    const response = await this.request('complete', { prefix });
+    const matches = Array.isArray(response.matches)
+      ? response.matches.map((item: unknown) => String(item))
       : [];
 
     return {
@@ -151,7 +203,11 @@ export class BasedPLKernel extends BaseKernel {
   }
 
   dispose(): void {
-    this.session = null;
+    this.pending.forEach(({ reject }) =>
+      reject(new Error('BasedPL kernel disposed'))
+    );
+    this.pending.clear();
+    this.worker.terminate();
     super.dispose();
   }
 }
