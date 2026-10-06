@@ -309,7 +309,7 @@ function showReference(){document.body.classList.remove('repl-mode');document.ge
 function showRepl(){document.body.classList.add('repl-mode');document.getElementById('replTab').classList.add('active');document.getElementById('referenceTab').classList.remove('active');document.getElementById('jupyterliteTab').classList.remove('active');replInput.focus()}
 document.getElementById('referenceTab').onclick=()=>{history.replaceState(null,'',location.pathname);showReference()};
 document.getElementById('replTab').onclick=()=>{history.replaceState(null,'','#repl');showRepl()};
-document.getElementById('jupyterliteTab').onclick=()=>{location.href='jupyterlite/'};
+document.getElementById('jupyterliteTab').onclick=()=>{location.href='jupyterlite/lab/index.html?path=basedpl-display-tests.ipynb'};
 if(location.hash==='#repl')showRepl();
 else showReference();
 startBpl();
