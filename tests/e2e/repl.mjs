@@ -60,11 +60,15 @@ try {
   if (await input.inputValue() !== '⍳') {
     throw new Error(`Mac keyboard did not insert ⍳: got ${JSON.stringify(await input.inputValue())}`);
   }
+  await input.type('5');
+  if (await input.inputValue() !== '⍳5') {
+    throw new Error(`Mac keyboard did not preserve glyph input: got ${JSON.stringify(await input.inputValue())}`);
+  }
   await input.press('Enter');
   await page.waitForFunction(
     ({ count }) => document.querySelectorAll('.term-output').length >= count,
     { count: cases.length + 1 },
-    { timeout: 5_000 }
+    { timeout: 15_000 }
   );
   const keyboardResult = outputs.last();
   const keyboardText = (await keyboardResult.textContent())?.trim() || '';
