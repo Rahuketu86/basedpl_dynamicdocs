@@ -159,28 +159,33 @@ const kernel: JupyterFrontEndPlugin<void> = {
 
     let overlay = false;
     try { overlay = localStorage.getItem('ngn_lb_overlay') === '1'; } catch {}
-    const palette = new Set<string>();
-    const shortcuts = new Map<string, string>();
-    for (const [key, actionValue] of Object.entries(macLayout.option as Record<string, any>)) {
-      const action: any = actionValue;
-      if (typeof action === 'string') {
-        palette.add(action); shortcuts.set(action, '⌥' + key);
-      } else {
-        const state = macLayout.states[action.state as string] as any;
-        if (!state) continue;
-        palette.add(state.terminator); shortcuts.set(state.terminator, '⌥' + key);
-        for (const [nextKey, nextAction] of Object.entries(state.keys)) {
-          if (typeof nextAction === 'string') {
-            palette.add(nextAction); shortcuts.set(nextAction, '⌥' + key + ' ' + nextKey);
-          }
-        }
+    // Mac/US physical keyboard layout. Each key shows the glyph produced by Option+key.
+    const keyboardRows = [
+      ['`','1','2','3','4','5','6','7','8','9','0','-','='],
+      ['q','w','e','r','t','y','u','i','o','p','[',']','\\\\'],
+      ['a','s','d','f','g','h','j','k','l',';',"'"],
+      ['z','x','c','v','b','n','m',',','.','/']
+    ];
+    const glyphForKey = (key: string): string | null => {
+      const action: any = macLayout.option?.[key];
+      if (typeof action === 'string') return action;
+      return action?.state ? (macLayout.states?.[action.state]?.terminator ?? null) : null;
+    };
+    for (const row of keyboardRows) {
+      const rowEl = document.createElement('div');
+      rowEl.className = 'bpl_keyrow';
+      for (const key of row) {
+        const glyph = glyphForKey(key);
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'bpl_key';
+        b.dataset.glyph = glyph ?? '';
+        b.title = glyph ? `Option+${key} → ${glyph}` : `Option+${key}`;
+        b.innerHTML = `<span class="bpl_glyph">${glyph ?? ''}</span><span class="bpl_keylabel">${key}</span>`;
+        if (!glyph) b.classList.add('unmapped');
+        rowEl.appendChild(b);
       }
-    }
-    for (const glyph of palette) {
-      const b = document.createElement('button');
-      b.type = 'button'; b.dataset.glyph = glyph; b.textContent = glyph;
-      b.title = (glyphNames[glyph] ?? glyph) + '   ' + (shortcuts.get(glyph) ?? '');
-      bar.appendChild(b);
+      bar.appendChild(rowEl);
     }
 
     const reflow = () => {
@@ -235,7 +240,9 @@ const kernel: JupyterFrontEndPlugin<void> = {
         overlay = !overlay;
         try { localStorage.setItem('ngn_lb_overlay', overlay ? '1' : '0'); } catch {}
         reflow();
-      } else if (b.dataset.glyph && last.editor) last.editor.insert(b.dataset.glyph);
+      } else if (b.dataset.glyph && last.editor) {
+        last.editor.insert(b.dataset.glyph);
+      }
       cancel();
     });
     tip.addEventListener('mousedown', ev => {
@@ -248,13 +255,13 @@ const kernel: JupyterFrontEndPlugin<void> = {
     const remember = () => { last.editor = editor(); };
     notebookTracker.activeCellChanged.connect(() => { remember(); cancel(); });
     notebookTracker.currentChanged.connect(() => { remember(); cancel(); });
-    document.addEventListener('focusin', () => { remember(); cancel(); }, true);
+    document.addEventListener('focusin', () => { const e = editor(); if (e) last.editor = e; }, true);
     document.addEventListener('pointerup', ev => { if (!host.contains(ev.target as Node)) remember(); }, true);
     for (const event of ['paste', 'cut', 'compositionstart', 'focusout']) document.addEventListener(event, cancel, true);
     document.addEventListener('input', ev => {
       if (!keyInput || ((ev as InputEvent).inputType !== 'insertText' && (ev as InputEvent).inputType !== 'deleteContentBackward')) cancel();
       keyInput = false;
-      requestAnimationFrame(() => { remember(); void refresh(ev.target); });
+      requestAnimationFrame(() => { remember(); });
     });
     window.addEventListener('blur', () => { leftAlt = rightAlt = false; pending = null; cancel(); });
     window.addEventListener('keyup', ev => {
@@ -283,19 +290,26 @@ const kernel: JupyterFrontEndPlugin<void> = {
       const query = start >= 0 ? e.text.slice(start + 1, e.pos) : '';
       const item = start >= 0 && e.empty && /^[a-z]*$/i.test(query);
       const typed = !!active && active.id === e.id && active.start === start;
-      const delimiter = plain && ev.key.length === 1 && !/[a-z]/i.test(ev.key);
-      if (item && (ev.key === 'Tab' || (typed && (ev.key === 'Enter' || delimiter)))) {
-        if (choice?.found.length === 1 && choice.start === start) {
-          e.insert(choice.found[0].glyph, start); cancel();
-        } else if (ev.key === 'Tab') {
+
+      // First Tab opens the glyph list. A second Tab commits the selected/first glyph.
+      if (item && ev.key === 'Tab' && plain && !ev.shiftKey) {
+        if (choice?.editor.id === e.id && choice.start === start && !choice.editor.text.slice(start + 1, choice.editor.pos).localeCompare(query)) {
+          if (choice.found.length) {
+            e.insert(choice.found[0].glyph, start);
+            cancel();
+          }
+        } else {
           active = { id: e.id, start };
           void refresh(ev.target);
-          ev.preventDefault(); ev.stopImmediatePropagation(); return;
         }
+        ev.preventDefault();
+        ev.stopImmediatePropagation();
+        return;
       }
+
       if (ev.key === String.fromCharCode(96) && plain) {
         const updated = editor();
-        if (updated && updated.empty) { active = { id: updated.id, start: updated.pos }; void refresh(ev.target); }
+        if (updated && updated.empty) { active = { id: updated.id, start: updated.pos }; }
         else cancel();
       } else if (!(typed && plain && (/^[a-z]$/i.test(ev.key) || ev.key === 'Backspace'))) cancel();
       keyInput = plain && (ev.key.length === 1 || ev.key === 'Backspace');
@@ -307,15 +321,22 @@ const kernel: JupyterFrontEndPlugin<void> = {
     const style = document.createElement('style');
     style.textContent = [
       '#basedpl-input-host { position: fixed; inset: 0; z-index: 2147483647; pointer-events: none; }',
-      '#basedpl-input-host .ngn_lb, #basedpl-input-host .bpl_choices { pointer-events: auto; background: #eee; color: #111; font: 15px var(--bpl-font, ui-monospace, SFMono-Regular, Menlo, monospace); z-index: 2147483647; }',
-      '#basedpl-input-host .ngn_lb { position: fixed; top: 0; left: 0; right: 0; border-bottom: 1px solid #999; padding: 2px; display: flex; flex-wrap: wrap; align-items: center; }',
-      '#basedpl-input-host .ngn_lb button, #basedpl-input-host .bpl_choices button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; padding: 2px 4px; }',
-      '#basedpl-input-host .ngn_lb button:hover, #basedpl-input-host .bpl_choices button:hover { background: #777; color: white; }',
-      '#basedpl-input-host .ngn_x, #basedpl-input-host .ngn_o { margin-left: 2px; }',
+      '#basedpl-input-host .ngn_lb, #basedpl-input-host .bpl_choices { pointer-events: auto; background: #eee; color: #111; font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; z-index: 2147483647; }',
+      '#basedpl-input-host .ngn_lb { position: fixed; top: 0; left: 0; right: 0; border-bottom: 1px solid #999; padding: 3px 46px 3px 3px; display: flex; flex-direction: column; gap: 2px; align-items: center; }',
+      '#basedpl-input-host .bpl_keyrow { display: flex; gap: 2px; justify-content: center; }',
+      '#basedpl-input-host .bpl_key { width: 56px; height: 38px; padding: 2px; border: 1px solid #aaa; border-radius: 5px; background: #ddd; color: #111; cursor: pointer; }',
+      '#basedpl-input-host .bpl_key:hover { background: #bbb; }',
+      '#basedpl-input-host .bpl_key.unmapped { opacity: .35; }',
+      '#basedpl-input-host .bpl_glyph { display: block; font-size: 21px; line-height: 22px; min-height: 22px; }',
+      '#basedpl-input-host .bpl_keylabel { display: block; font-size: 9px; opacity: .7; line-height: 10px; }',
+      '#basedpl-input-host .ngn_x, #basedpl-input-host .ngn_o { position: absolute; top: 3px; border: 0; background: transparent; color: inherit; cursor: pointer; font-size: 18px; padding: 2px 5px; }',
+      '#basedpl-input-host .ngn_x { right: 3px; }',
+      '#basedpl-input-host .ngn_o { right: 27px; }',
       '#basedpl-input-host .bpl_choices { position: fixed; max-height: 240px; max-width: calc(100vw - 16px); overflow: auto; border: 1px solid #888; border-radius: 4px; box-shadow: 0 3px 12px #0003; padding: 4px; }',
-      '#basedpl-input-host .bpl_choices button { display: block; width: 100%; text-align: left; white-space: nowrap; }',
+      '#basedpl-input-host .bpl_choices button { display: block; width: 100%; text-align: left; white-space: nowrap; font: inherit; color: inherit; background: none; border: 0; cursor: pointer; padding: 3px 5px; }',
+      '#basedpl-input-host .bpl_choices button:hover { background: #777; color: white; }',
       '#basedpl-input-host .bpl_choices small { display: block; padding: 4px; }',
-      '@media(prefers-color-scheme:dark) { #basedpl-input-host .ngn_lb, #basedpl-input-host .bpl_choices { background: #222; color: #ddd; } #basedpl-input-host .ngn_lb button:hover, #basedpl-input-host .bpl_choices button:hover { background: #bbb; color: #111; } }'
+      '@media(prefers-color-scheme:dark) { #basedpl-input-host .ngn_lb, #basedpl-input-host .bpl_choices { background: #222; color: #ddd; } #basedpl-input-host .bpl_key { background: #333; border-color: #666; color: #ddd; } #basedpl-input-host .bpl_key:hover { background: #555; } }'
     ].join('\\n');
     document.head.appendChild(style);
   }
