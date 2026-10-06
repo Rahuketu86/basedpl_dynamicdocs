@@ -1,0 +1,45 @@
+name: Test BasedPL WASM
+
+on:
+  pull_request:
+    paths:
+      - "web/**"
+      - "scripts/prepare_basedpl_wasm.sh"
+      - ".github/workflows/**"
+
+permissions:
+  contents: read
+
+jobs:
+  wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - name: Install wasm-bindgen
+        run: cargo install wasm-bindgen-cli --version 0.2.129
+      - name: Prepare patched BasedPL
+        run: bash scripts/prepare_basedpl_wasm.sh
+      - name: Build BasedPL WASM
+        run: |
+          rm -rf build/bpl build/diagnostic
+          cargo build --release --target wasm32-unknown-unknown --manifest-path web/Cargo.toml
+          WASM=$(find . -type f -path '*/wasm32-unknown-unknown/release/basedpl_web.wasm' -print -quit)
+          test -n "$WASM"
+          wasm-bindgen "$WASM" --target web --out-dir build/bpl
+          wasm-bindgen "$WASM" --target nodejs --out-dir build/diagnostic
+      - name: Run evaluator diagnostic
+        run: |
+          node - <<'NODE'
+          const { BplSession } = require('./build/diagnostic/basedpl_web.js');
+          const s = new BplSession();
+          for (const code of ['12+4', '+/ 12 4 3']) {
+            const result = s.diagnostic(code);
+            console.log('DIAGNOSTIC', JSON.stringify(code), result);
+            if (!result.startsWith('eval-completed ')) process.exit(1);
+          }
+          NODE
