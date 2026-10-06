@@ -57,6 +57,10 @@ The worker protocol is intentionally small:
 
 The UI also has a compact APL keyboard, command history, completion popup, Enter-to-evaluate, Tab-to-complete, Escape-to-close, and cursor-aware glyph insertion.
 
+### REPL value rendering
+
+`BplSession::eval()` returns three distinct fields: `output`, `error`, and `value`. The Rust `Session::show()` API returns the evaluated value as display text. The Worker must forward all three fields to the page. In particular, `value` is what displays ordinary expressions such as `12+4` and `⍳5`; dropping it produces a successful-looking REPL with blank results. The browser UI therefore renders `output` and `value` separately and shows `error` when present.
+
 ## WASM compatibility fixes
 
 ### 1. getrandom
