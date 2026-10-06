@@ -79,6 +79,9 @@ const kernel: JupyterFrontEndPlugin<void> = {
       '⍎':'execute','⍕':'format'
     };
 
+    type GlyphState = { terminator: string; keys: Record<string, string | { state: string }> };
+    const glyphStates = layout.states as Record<string, GlyphState>;
+
     const layoutMatchesGlyphs = (query: string) => {
       const q = query.toLowerCase();
       const result: Array<{glyph: string; name: string}> = [];
@@ -96,7 +99,7 @@ const kernel: JupyterFrontEndPlugin<void> = {
         if (typeof action === 'string') {
           add(action, glyphNames[action] ?? action);
         } else {
-          const state = layout.states[action.state];
+          const state = glyphStates[action.state];
           add(state.terminator, action.state);
           for (const next of Object.values(state.keys)) {
             if (typeof next === 'string') add(next, glyphNames[next] ?? next);
@@ -114,10 +117,13 @@ const kernel: JupyterFrontEndPlugin<void> = {
             code,
             cursor_pos: code.length
           });
-          return reply.matches.map(glyph => ({
-            glyph: String(glyph),
-            name: glyphNames[String(glyph)] ?? String(glyph)
-          })).slice(0, 12);
+          if ('matches' in reply) {
+            return reply.matches.map((glyph: string) => ({
+              glyph: String(glyph),
+              name: glyphNames[String(glyph)] ?? String(glyph)
+            })).slice(0, 12);
+          }
+          throw new Error('Glyph completion failed');
         } catch {
           // Fall through to the layout-only matcher while the worker starts.
         }
@@ -186,7 +192,7 @@ const kernel: JupyterFrontEndPlugin<void> = {
     };
 
     document.addEventListener('keydown', event => {
-      const editor = notebookTracker.activeCell?.editor;
+      const editor = notebookTracker.activeCell?.editor as any;
       if (!editor || event.defaultPrevented || event.isComposing) return;
 
       if (activeQuery?.editor === editor) {
@@ -232,7 +238,7 @@ const kernel: JupyterFrontEndPlugin<void> = {
       if (typeof action === 'string') {
         addPalette(action, '⌥' + key);
       } else {
-        const state = layout.states[action.state];
+        const state = glyphStates[action.state];
         addPalette(state.terminator, '⌥' + key);
         for (const [nextKey, nextAction] of Object.entries(state.keys)) {
           if (typeof nextAction === 'string') addPalette(nextAction, '⌥' + key + ' ' + nextKey);
