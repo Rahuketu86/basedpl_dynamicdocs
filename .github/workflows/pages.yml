@@ -30,7 +30,14 @@ jobs:
         run: |
           rm -rf build/bpl
           cargo build --release --target wasm32-unknown-unknown --manifest-path web/Cargo.toml
-          wasm-bindgen target/wasm32-unknown-unknown/release/basedpl_web.wasm --target web --out-dir build/bpl
+          echo 'Built WASM files:'
+          find . -type f -path '*/wasm32-unknown-unknown/release/*.wasm' -print
+          WASM=$(find . -type f -path '*/wasm32-unknown-unknown/release/basedpl_web.wasm' -print -quit)
+          if [ -z "$WASM" ]; then
+            echo 'ERROR: basedpl_web.wasm was not found'
+            exit 1
+          fi
+          wasm-bindgen "$WASM" --target web --out-dir build/bpl
       - name: Build site
         run: python build.py
       - name: Upload Pages artifact
