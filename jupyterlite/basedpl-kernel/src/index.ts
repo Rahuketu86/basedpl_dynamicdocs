@@ -6,6 +6,7 @@ import type { IKernel } from '@jupyterlite/services';
 import { IKernelSpecs } from '@jupyterlite/services';
 import { INotebookTracker } from '@jupyterlab/notebook';
 import { BasedPLKernel } from './kernel.js';
+import inputFactory from './input.js';
 
 const kernel: JupyterFrontEndPlugin<void> = {
   id: '@rahuketu86/basedpl-kernel:kernel',
@@ -31,7 +32,7 @@ const kernel: JupyterFrontEndPlugin<void> = {
         new BasedPLKernel(options)
     });
 
-    // A compact floating BasedPL input keeps the notebook UI intact while
+    // Reuse BasedPL's input parser/keyboard logic; the kernel remains the single completion source.\n    const bplInput = inputFactory([], { alt_aliases: {}, option: {}, states: {} });\n\n    // A compact floating BasedPL input keeps the notebook UI intact while
     // giving us the same `name -> glyph completion workflow as the standalone REPL.
     const root = document.createElement('div');
     root.id = 'basedpl-floating-input';
@@ -158,32 +159,21 @@ const kernel: JupyterFrontEndPlugin<void> = {
 
     const showCompletion = async () => {
       const panel = currentBasedPL();
-      if (!panel) {
-        hideCompletion();
-        return;
-      }
-      const prefix = input.value.slice(0, input.selectionStart ?? input.value.length);
-      if (!/`(?:[A-Za-z_][A-Za-z0-9_]*)?$/.test(prefix)) {
-        hideCompletion();
-        return;
-      }
+      if (!panel) { hideCompletion(); return; }
+
+      const cursor = input.selectionStart ?? input.value.length;
+      const parsed = bplInput.entry({
+        text: input.value, pos: cursor,
+        empty: input.selectionStart === input.selectionEnd, bpl: true
+      });
+      if (!parsed) { hideCompletion(); return; }
 
       try {
         const kernel = panel.context.sessionContext.session?.kernel;
-        if (!kernel) {
-          hideCompletion();
-          return;
-        }
-        const cursor = input.selectionStart ?? input.value.length;
-        const reply = await kernel.requestComplete({
-          code: input.value,
-          cursor_pos: cursor
-        });
+        if (!kernel) { hideCompletion(); return; }
+        const reply = await kernel.requestComplete({ code: input.value, cursor_pos: cursor });
         const matches = reply.content.matches ?? [];
-        if (!matches.length || !currentBasedPL()) {
-          hideCompletion();
-          return;
-        }
+        if (!matches.length || !currentBasedPL()) { hideCompletion(); return; }
 
         completion.replaceChildren();
         matches.slice(0, 40).forEach((match: string, index: number) => {
@@ -196,16 +186,13 @@ const kernel: JupyterFrontEndPlugin<void> = {
           glyph.textContent = match;
           const name = document.createElement('span');
           name.className = 'bpl-completion-name';
-          name.textContent = 'BasedPL glyph';
+          name.textContent = parsed.query ? 'BasedPL: ' + parsed.query : 'BasedPL glyph';
           button.append(glyph, name);
           completion.appendChild(button);
         });
         completion.hidden = false;
-      } catch {
-        hideCompletion();
-      }
+      } catch { hideCompletion(); }
     };
-
     const acceptCompletion = async (index = 0) => {
       const panel = currentBasedPL();
       if (!panel) return;
