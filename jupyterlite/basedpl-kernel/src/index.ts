@@ -51,31 +51,39 @@ const kernel: JupyterFrontEndPlugin<void> = {
       const cell: any = notebookTracker.activeCell;
       const ed: any = cell?.editor;
       if (!ed || ed.readOnly) return last.editor;
-      const cursor = ed.getCursorPosition?.();
-      if (!cursor) return last.editor;
-      const selection = ed.getSelection?.();
-      // Keep the native JupyterLab positions themselves.  Converting a saved
-      // offset back through getPositionAt() is unsafe when the editor has lost
-      // focus: the adapter can return an incomplete position and setSelection()
-      // then fails inside JupyterLab's CodeMirror wrapper.
-      const start = selection?.start ?? cursor;
-      const end = selection?.end ?? cursor;
-      const pos = ed.getOffsetAt(cursor);
-      const from = ed.getOffsetAt(start);
-      const to = ed.getOffsetAt(end);
+
+      // JupyterLab 4's CodeMirrorEditor exposes the underlying CodeMirror 6
+      // EditorView as `editor`. Capture its numeric document positions directly.
+      // This avoids JupyterLab's line/column -> CodeMirror conversion, which can
+      // produce an incomplete position after the floating keyboard takes focus.
+      const view: any = ed.editor;
+      if (!view?.state?.selection?.main) return last.editor;
+      const sel = view.state.selection.main;
+      let from = sel.from;
+      let to = sel.to;
+
       return {
-        id: ed,
-        text: ed.model.sharedModel.getSource(),
-        pos,
-        empty: from === to,
-        rect: () => ({ left: ed.host.getBoundingClientRect().left, bottom: ed.host.getBoundingClientRect().bottom }),
-        insert: (text: string) => {
-          // Restore the exact native line/column selection rather than
-          // reconstructing it from an offset.
-          ed.focus();
-          ed.setSelection(start, end);
-          ed.replaceSelection(text);
-          ed.focus();
+        id: view,
+        text: view.state.doc.toString(),
+        pos: sel.head,
+        empty: sel.empty,
+        rect: () => {
+          const coords = view.coordsAtPos(sel.head);
+          return coords
+            ? { left: coords.left, bottom: coords.bottom }
+            : { left: ed.host.getBoundingClientRect().left, bottom: ed.host.getBoundingClientRect().bottom };
+        },
+        insert: (text: string, requestedFrom?: number) => {
+          const start = requestedFrom ?? from;
+          const end = requestedFrom === undefined ? to : to;
+          view.dispatch({
+            changes: { from: start, to: end, insert: text },
+            selection: { anchor: start + text.length },
+            userEvent: 'input.complete'
+          });
+          from = start + text.length;
+          to = from;
+          view.focus();
         }
       };
     };
