@@ -512,6 +512,10 @@ const kernel: JupyterFrontEndPlugin<void> = {
 
     const style = document.createElement('style');
     style.textContent = [
+      // The site injects a fixed 44px navigation strip before JupyterLite.
+      // LabShell itself is absolutely positioned at viewport top, so without
+      // moving the shell down, its header is rendered underneath that strip.
+      '.jp-LabShell { top: 44px !important; height: calc(100% - 44px) !important; }',
       '#jp-header-panel { width: 100%; box-sizing: border-box; position: relative; z-index: 1001 !important; }',
       '#jp-header-panel > .bpl-header-widget { width: 100% !important; flex: 0 0 auto; box-sizing: border-box; min-height: 1px !important; }',
       '#basedpl-input-host { width: 100%; box-sizing: border-box; pointer-events: none; }',
