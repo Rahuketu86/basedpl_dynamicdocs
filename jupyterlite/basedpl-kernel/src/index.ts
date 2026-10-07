@@ -6,7 +6,7 @@ import type { IKernel } from '@jupyterlite/services';
 import { IKernelSpecs } from '@jupyterlite/services';
 import { INotebookTracker } from '@jupyterlab/notebook';
 import { IMainMenu } from '@jupyterlab/mainmenu';
-import { BoxLayout, Menu, Widget } from '@lumino/widgets';
+import { Menu, Widget } from '@lumino/widgets';
 import { BasedPLKernel } from './kernel.js';
 import layout from './layout.js';
 
@@ -196,7 +196,6 @@ const kernel: JupyterFrontEndPlugin<void> = {
     }
 
     const host = document.createElement('div');
-    host.id = 'basedpl-input-host';
     const bar = document.createElement('div');
     bar.className = 'ngn_lb';
     bar.setAttribute('aria-label', 'BPL symbols');
@@ -215,13 +214,12 @@ const kernel: JupyterFrontEndPlugin<void> = {
     host.append(bar);
 
     // Use JupyterLab's official shell extension point instead of a fixed body
-    // overlay. The header area sits above the main menu; its height follows
-    // this widget, so the notebook is reflowed by JupyterLab itself.
+    // overlay. The header area sits above the main menu; see `reflow()`
+    // below for how its height is kept in sync with the actual content.
     const inputWidget = new Widget({ node: host });
     inputWidget.id = 'basedpl-input-widget';
     inputWidget.addClass('bpl-header-widget');
     app.shell.add(inputWidget, 'header', { rank: 501 });
-    const headerPanel = document.getElementById('jp-header-panel') as HTMLElement | null;
 
     let hidden = false;
     let mode: 'bar' | 'keyboard' = 'keyboard';
@@ -339,19 +337,68 @@ const kernel: JupyterFrontEndPlugin<void> = {
       inputWidget.node.dataset.mode = mode;
     };
 
+    // The widget's own height is measured from its actual rendered content
+    // (`bar`'s scrollHeight/offsetHeight) rather than a fixed guess -- a
+    // fixed `min-height` per mode doesn't track the real content height
+    // (which also changes at the `@media(max-width: 1100px)` breakpoint
+    // below), leaving a visible gap between the keyboard and the JupyterLab
+    // menu bar below it. The `[data-mode]` CSS rules further down are only
+    // a floor for the brief window before this first measurement lands.
+    //
+    // Measuring and setting min-height on this widget alone is still not
+    // enough to make JupyterLab's header *region* grow or shrink, though:
+    // `#jp-header-panel` positions its single child (this widget) with
+    // `position: absolute`, and an absolutely-positioned child's size never
+    // propagates up to inflate its ancestor's own size -- that's just how
+    // CSS works, regardless of Lumino.
+    //
+    // We deliberately do NOT use `BoxLayout.setSizeBasis`/`setStretch` here.
+    // Those are static methods keyed to attached properties on *our own*
+    // imported `@lumino/widgets` module. This extension's webpack build
+    // consumes `@lumino/widgets` as a shared singleton at a host-declared
+    // range (`^2.3.1-alpha.1`) incompatible with what we require
+    // (`^2.7.0`), so our import resolves to a private bundled copy rather
+    // than the host's real one -- our `BoxLayout` and the shell's real
+    // `BoxLayout` are different classes from different module instances,
+    // each with their own separate attached-property storage. Calling our
+    // copy's `setSizeBasis` succeeds but writes into a registry the real
+    // shell's layout engine never reads, so it has no visible effect.
+    //
+    // `inputWidget.parent` and `app.shell`, by contrast, are the real,
+    // live widget instances from the host's actual shell tree (we got
+    // `inputWidget.parent` by being attached into it, and `app` was handed
+    // to us directly by the host). Calling `.fit()` on them invokes their
+    // real prototype methods regardless of which module compiled the
+    // class, so this works independent of any module-federation mismatch:
+    // fit the header panel itself first (so it re-derives its own size
+    // from its child's current CSS-driven height), then fit the shell
+    // (so siblings below the header, e.g. the top panel, reposition to
+    // match the header's new size).
     const reflow = () => {
       setMode(mode);
       if (hidden) {
         inputWidget.hide();
-        inputWidget.node.style.minHeight = '0px';
-        if (inputWidget.parent) BoxLayout.setSizeBasis(inputWidget.parent, 0);
-        if (headerPanel) headerPanel.style.minHeight = '0px';
-        return;
+      } else {
+        inputWidget.show();
       }
-      inputWidget.show();
-      inputWidget.node.style.display = 'block';
-      inputWidget.node.style.width = '100%';
-      resizeHeaderToContent();
+      // Clear the explicit inline sizing Lumino leaves behind on *both*
+      // levels of the tree -- this widget's own node, and the header panel
+      // node one level up (`inputWidget.parent`). A hide/show round trip
+      // pins the header panel itself to an explicit `height: 0px` (not just
+      // this widget), and that stale value is just as sticky across
+      // `fit()` calls as the widget's own height was; clearing only one
+      // level leaves the header panel stuck at whichever size it last had.
+      inputWidget.node.style.removeProperty('height');
+      if (inputWidget.parent) {
+        inputWidget.parent.node.style.removeProperty('height');
+        inputWidget.parent.node.style.removeProperty('min-height');
+      }
+      if (!hidden) {
+        const contentHeight = Math.max(bar.scrollHeight, bar.offsetHeight);
+        inputWidget.node.style.minHeight = contentHeight + 'px';
+      }
+      inputWidget.parent?.fit();
+      app.shell.fit();
     };
 
     const cancel = () => { active = undefined; };
@@ -374,37 +421,10 @@ const kernel: JupyterFrontEndPlugin<void> = {
       if (glyph && remembered) remembered.insert(glyph);
     });
 
-    const resizeHeaderToContent = () => {
-      if (!headerPanel || hidden) return;
-      // Measure only after the Lumino widget is visible. Measuring while the
-      // widget/ancestor is hidden returns zero and can collapse the header.
-      requestAnimationFrame(() => {
-        if (hidden) return;
-        inputWidget.show();
-        inputWidget.node.style.display = 'block';
-        const minimumHeight = mode === 'keyboard' ? 300 : 50;
-        const height = Math.max(minimumHeight, bar.scrollHeight, bar.offsetHeight);
-        // The JupyterLab header panel is initially zero-height. Lumino sizes
-        // its child from the child's minimum height; setting the minimum on
-        // the actual shell widget is the supported fix for this header-area
-        // layout behavior.
-        inputWidget.node.style.minHeight = height + 'px';
-        // LabShell's root is a Lumino BoxLayout. CSS min-height alone does
-        // not reliably reserve space for a zero-stretch header child.
-        // Set the actual BoxLayout size basis so the top panel is laid out
-        // below the BasedPL widget instead of painting over it.
-        if (inputWidget.parent) BoxLayout.setSizeBasis(inputWidget.parent, height);
-        headerPanel.style.minHeight = height + 'px';
-        app.shell.fit();
-      });
-    };
-
     const showKeyboard = () => {
       hidden = false;
-      inputWidget.show();
-      inputWidget.node.style.display = 'block';
       setMode('keyboard');
-      resizeHeaderToContent();
+      reflow();
       app.commands.notifyCommandChanged(commandIds.showKeyboard);
       app.commands.notifyCommandChanged(commandIds.showBar);
       app.commands.notifyCommandChanged(commandIds.hide);
@@ -412,10 +432,8 @@ const kernel: JupyterFrontEndPlugin<void> = {
 
     const showBar = () => {
       hidden = false;
-      inputWidget.show();
-      inputWidget.node.style.display = 'block';
       setMode('bar');
-      resizeHeaderToContent();
+      reflow();
       app.commands.notifyCommandChanged(commandIds.showKeyboard);
       app.commands.notifyCommandChanged(commandIds.showBar);
       app.commands.notifyCommandChanged(commandIds.hide);
@@ -423,12 +441,7 @@ const kernel: JupyterFrontEndPlugin<void> = {
 
     const hideInput = () => {
       hidden = true;
-      inputWidget.hide();
-      inputWidget.node.style.display = 'none';
-      inputWidget.node.style.minHeight = '0px';
-      if (inputWidget.parent) BoxLayout.setSizeBasis(inputWidget.parent, 0);
-      if (headerPanel) headerPanel.style.minHeight = '0px';
-      app.shell.fit();
+      reflow();
       app.commands.notifyCommandChanged(commandIds.showKeyboard);
       app.commands.notifyCommandChanged(commandIds.showBar);
       app.commands.notifyCommandChanged(commandIds.hide);
@@ -520,40 +533,52 @@ const kernel: JupyterFrontEndPlugin<void> = {
 
     const style = document.createElement('style');
     style.textContent = [
-      '#jp-header-panel { width: 100%; box-sizing: border-box; position: relative; z-index: 1001 !important; }',
-      '#jp-header-panel > .bpl-header-widget { width: 100% !important; flex: 0 0 auto; box-sizing: border-box; min-height: 1px; }',
-      '#basedpl-input-host { width: 100%; box-sizing: border-box; pointer-events: none; }',
-      '#basedpl-input-host .ngn_lb { position: relative; width: 100%; box-sizing: border-box; pointer-events: auto; background: var(--jp-layout-color1, #fff); color: var(--jp-ui-font-color1, #111); font-family: var(--jp-ui-font-family, sans-serif); border: 1px solid var(--jp-border-color1, #bdbdbd); border-radius: 0 0 8px 8px; padding: 4px 10px 8px; display: flex; flex-direction: column; align-items: center; gap: 6px; box-shadow: var(--jp-elevation-z1, 0 1px 4px #0002); }',
-      '#basedpl-input-host .bpl_keyrow { display: flex; justify-content: center; align-items: stretch; gap: 5px; width: 100%; box-sizing: border-box; }',
-      '#basedpl-input-host .bpl_key { flex: 1 1 0; min-width: 0; width: auto; height: 52px; padding: 3px; border: 1px solid var(--jp-border-color2, #c8c8c8); border-radius: 7px; background: var(--jp-layout-color2, #f5f5f5); color: var(--jp-ui-font-color1, #111); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; box-sizing: border-box; user-select: none; font-family: var(--jp-ui-font-family, sans-serif); }',
-      '#basedpl-input-host .bpl_key:hover { background: var(--jp-layout-color3, #e5e5e5); border-color: var(--jp-brand-color1, #2196f3); }',
-      '#basedpl-input-host .bpl_key:active { background: var(--jp-brand-color2, #1976d2); color: var(--jp-inverse-layout-color1, #fff); }',
-      '#basedpl-input-host .bpl_key.unmapped { opacity: .3; }',
-      '#basedpl-input-host .bpl_glyphs { display: flex; align-items: center; justify-content: center; gap: 5px; width: 100%; min-height: 31px; font-family: var(--jp-content-font-family, sans-serif); font-size: 26px; line-height: 29px; white-space: nowrap; }',
-      '#basedpl-input-host .bpl_key.wide { flex-grow: 1.45; }',
-      '#basedpl-input-host .bpl_key.space { flex-grow: 5; }',
-      '#basedpl-input-host .bpl_glyph_target { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; padding: 0 3px; border-radius: 4px; cursor: pointer; }',
-      '#basedpl-input-host .bpl_glyph_target.primary { font-size: 30px; font-weight: 500; }',
-      '#basedpl-input-host .bpl_glyph_target:not(.primary) { font-size: 22px; opacity: .82; }',
-      '#basedpl-input-host .bpl_glyph_target:hover { background: var(--jp-layout-color3, #e5e5e5); color: var(--jp-brand-color1, #1976d2); }',
-      '#basedpl-input-host .bpl_keylabel { display: block; width: 100%; font-size: 11px; line-height: 13px; opacity: .65; text-align: center; text-transform: uppercase; }',
-      '#basedpl-input-host .ngn_o { position: absolute !important; top: 4px !important; left: 10px !important; min-width: 72px; height: 27px; border: 1px solid var(--jp-border-color2, #c8c8c8); border-radius: 7px; background: var(--jp-layout-color2, #f5f5f5); color: var(--jp-ui-font-color1, #111); cursor: pointer; font-size: 12px; line-height: 25px; padding: 0 9px; z-index: 3; box-shadow: 0 1px 2px #0002; }',
-      '#basedpl-input-host .ngn_o:hover { background: var(--jp-layout-color3, #e5e5e5); border-color: var(--jp-brand-color1, #2196f3); }',
-      '#basedpl-input-host .ngn_hide { position: absolute; top: 4px; right: 8px; height: 27px; padding: 0 9px; border: 1px solid var(--jp-border-color2, #c8c8c8); border-radius: 7px; background: var(--jp-layout-color2, #f5f5f5); color: var(--jp-ui-font-color1, #111); cursor: pointer; font-size: 12px; line-height: 25px; z-index: 3; box-shadow: 0 1px 2px #0002; pointer-events:auto; }',
-      '#basedpl-input-host .ngn_hide:hover { background: var(--jp-layout-color3, #e5e5e5); border-color: var(--jp-brand-color1,#1976d2); }',
-      '#basedpl-input-host .bpl_bar_view { display:flex !important; align-items:center; justify-content:flex-start; flex-wrap:nowrap; gap:3px; width:100%; padding:1px 82px 0 82px; box-sizing:border-box; height:40px; max-height:40px; overflow-x:auto; overflow-y:hidden; white-space:nowrap; scrollbar-width:thin; }',
-      '#basedpl-input-host .bpl_bar_view[hidden] { display:none !important; }',
-      '#basedpl-input-host .bpl_keyboard_view { display:flex; flex-direction:column; align-items:stretch; width:100%; }',
-      '#basedpl-input-host .bpl_keyboard_view[hidden] { display:none !important; }',
-      '#basedpl-input-host .bpl_bar_glyph { min-width:34px; height:34px; padding:2px 7px; border:1px solid var(--jp-border-color2,#c8c8c8); border-radius:6px; background:var(--jp-layout-color2,#f5f5f5); color:var(--jp-ui-font-color1,#111); font-family:var(--jp-content-font-family,sans-serif); font-size:22px; cursor:pointer; }',
-      '#basedpl-input-host .bpl_bar_glyph:hover { background:var(--jp-layout-color3,#e5e5e5); border-color:var(--jp-brand-color1,#2196f3); }',
-      '@media(max-width: 1100px) { #basedpl-input-host .bpl_key { flex-basis: 0; width: auto; height: 48px; } #basedpl-input-host .bpl_glyphs { font-size: 23px; gap: 2px; } #basedpl-input-host .bpl_glyph_target.primary { font-size: 26px; } #basedpl-input-host .bpl_glyph_target:not(.primary) { font-size: 19px; } #basedpl-input-host .bpl_keyrow { gap: 3px; } #basedpl-input-host .ngn_lb { padding-left: 7px; padding-right: 7px; } }'
+      '#jp-header-panel { width: 100%; box-sizing: border-box; }',
+      // `reflow()` measures the real content height and sets min-height
+      // inline once the widget has rendered. These two rules are only a
+      // floor for the brief window before that first measurement lands
+      // (e.g. the very first paint) -- they intentionally do not need to
+      // match the real content height.
+      '.bpl-header-widget { width: 100%; box-sizing: border-box; pointer-events: none; }',
+      '.bpl-header-widget[data-mode="keyboard"] { min-height: 1px; }',
+      '.bpl-header-widget[data-mode="bar"] { min-height: 1px; }',
+      '.bpl-header-widget .ngn_lb { position: relative; width: 100%; box-sizing: border-box; pointer-events: auto; background: var(--jp-layout-color1, #fff); color: var(--jp-ui-font-color1, #111); font-family: var(--jp-ui-font-family, sans-serif); border: 1px solid var(--jp-border-color1, #bdbdbd); border-radius: 0 0 8px 8px; padding: 4px 10px 8px; display: flex; flex-direction: column; align-items: center; gap: 6px; box-shadow: var(--jp-elevation-z1, 0 1px 4px #0002); }',
+      '.bpl-header-widget .bpl_keyrow { display: flex; justify-content: center; align-items: stretch; gap: 5px; width: 100%; box-sizing: border-box; }',
+      '.bpl-header-widget .bpl_key { flex: 1 1 0; min-width: 0; width: auto; height: 52px; padding: 3px; border: 1px solid var(--jp-border-color2, #c8c8c8); border-radius: 7px; background: var(--jp-layout-color2, #f5f5f5); color: var(--jp-ui-font-color1, #111); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; box-sizing: border-box; user-select: none; font-family: var(--jp-ui-font-family, sans-serif); }',
+      '.bpl-header-widget .bpl_key:hover { background: var(--jp-layout-color3, #e5e5e5); border-color: var(--jp-brand-color1, #2196f3); }',
+      '.bpl-header-widget .bpl_key:active { background: var(--jp-brand-color2, #1976d2); color: var(--jp-inverse-layout-color1, #fff); }',
+      '.bpl-header-widget .bpl_key.unmapped { opacity: .3; }',
+      '.bpl-header-widget .bpl_glyphs { display: flex; align-items: center; justify-content: center; gap: 5px; width: 100%; min-height: 31px; font-family: var(--jp-content-font-family, sans-serif); font-size: 26px; line-height: 29px; white-space: nowrap; }',
+      '.bpl-header-widget .bpl_key.wide { flex-grow: 1.45; }',
+      '.bpl-header-widget .bpl_key.space { flex-grow: 5; }',
+      '.bpl-header-widget .bpl_glyph_target { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; padding: 0 3px; border-radius: 4px; cursor: pointer; }',
+      '.bpl-header-widget .bpl_glyph_target.primary { font-size: 30px; font-weight: 500; }',
+      '.bpl-header-widget .bpl_glyph_target:not(.primary) { font-size: 22px; opacity: .82; }',
+      '.bpl-header-widget .bpl_glyph_target:hover { background: var(--jp-layout-color3, #e5e5e5); color: var(--jp-brand-color1, #1976d2); }',
+      '.bpl-header-widget .bpl_keylabel { display: block; width: 100%; font-size: 11px; line-height: 13px; opacity: .65; text-align: center; text-transform: uppercase; }',
+      '.bpl-header-widget .ngn_o { position: absolute !important; top: 4px !important; left: 10px !important; min-width: 72px; height: 27px; border: 1px solid var(--jp-border-color2, #c8c8c8); border-radius: 7px; background: var(--jp-layout-color2, #f5f5f5); color: var(--jp-ui-font-color1, #111); cursor: pointer; font-size: 12px; line-height: 25px; padding: 0 9px; z-index: 3; box-shadow: 0 1px 2px #0002; }',
+      '.bpl-header-widget .ngn_o:hover { background: var(--jp-layout-color3, #e5e5e5); border-color: var(--jp-brand-color1, #2196f3); }',
+      '.bpl-header-widget .ngn_hide { position: absolute; top: 4px; right: 8px; height: 27px; padding: 0 9px; border: 1px solid var(--jp-border-color2, #c8c8c8); border-radius: 7px; background: var(--jp-layout-color2, #f5f5f5); color: var(--jp-ui-font-color1, #111); cursor: pointer; font-size: 12px; line-height: 25px; z-index: 3; box-shadow: 0 1px 2px #0002; pointer-events:auto; }',
+      '.bpl-header-widget .ngn_hide:hover { background: var(--jp-layout-color3, #e5e5e5); border-color: var(--jp-brand-color1,#1976d2); }',
+      '.bpl-header-widget .bpl_bar_view { display:flex !important; align-items:center; justify-content:flex-start; flex-wrap:nowrap; gap:3px; width:100%; padding:1px 82px 0 82px; box-sizing:border-box; height:40px; max-height:40px; overflow-x:auto; overflow-y:hidden; white-space:nowrap; scrollbar-width:thin; }',
+      '.bpl-header-widget .bpl_bar_view[hidden] { display:none !important; }',
+      '.bpl-header-widget .bpl_keyboard_view { display:flex; flex-direction:column; align-items:stretch; width:100%; }',
+      '.bpl-header-widget .bpl_keyboard_view[hidden] { display:none !important; }',
+      '.bpl-header-widget .bpl_bar_glyph { min-width:34px; height:34px; padding:2px 7px; border:1px solid var(--jp-border-color2,#c8c8c8); border-radius:6px; background:var(--jp-layout-color2,#f5f5f5); color:var(--jp-ui-font-color1,#111); font-family:var(--jp-content-font-family,sans-serif); font-size:22px; cursor:pointer; }',
+      '.bpl-header-widget .bpl_bar_glyph:hover { background:var(--jp-layout-color3,#e5e5e5); border-color:var(--jp-brand-color1,#2196f3); }',
+      '@media(max-width: 1100px) { .bpl-header-widget .bpl_key { flex-basis: 0; width: auto; height: 48px; } .bpl-header-widget .bpl_glyphs { font-size: 23px; gap: 2px; } .bpl-header-widget .bpl_glyph_target.primary { font-size: 26px; } .bpl-header-widget .bpl_glyph_target:not(.primary) { font-size: 19px; } .bpl-header-widget .bpl_keyrow { gap: 3px; } .bpl-header-widget .ngn_lb { padding-left: 7px; padding-right: 7px; } }'
     ].join('\n');
     document.head.appendChild(style);
     reflow();
+    // At this point in plugin activation the widget has only just been
+    // attached (via `app.shell.add` above) and has not had an initial
+    // layout pass yet, so `bar.scrollHeight`/`offsetHeight` read as 0 --
+    // `reflow()` would measure a collapsed box and pin the header to 0px
+    // forever. One deferred re-run after the browser has actually laid out
+    // the freshly-attached content is enough; every later `reflow()` call
+    // (mode/hide/show changes) runs from user interaction, long after this
+    // initial attachment, so it doesn't need the same deferral.
     requestAnimationFrame(() => reflow());
-    requestAnimationFrame(() => requestAnimationFrame(() => reflow()));
-    window.addEventListener('resize', reflow);
   }
 };
 
