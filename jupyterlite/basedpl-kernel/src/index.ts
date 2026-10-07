@@ -54,9 +54,15 @@ const kernel: JupyterFrontEndPlugin<void> = {
       const cursor = ed.getCursorPosition?.();
       if (!cursor) return last.editor;
       const selection = ed.getSelection?.();
+      // Keep the native JupyterLab positions themselves.  Converting a saved
+      // offset back through getPositionAt() is unsafe when the editor has lost
+      // focus: the adapter can return an incomplete position and setSelection()
+      // then fails inside JupyterLab's CodeMirror wrapper.
+      const start = selection?.start ?? cursor;
+      const end = selection?.end ?? cursor;
       const pos = ed.getOffsetAt(cursor);
-      const from = selection ? ed.getOffsetAt(selection.start) : pos;
-      const to = selection ? ed.getOffsetAt(selection.end) : pos;
+      const from = ed.getOffsetAt(start);
+      const to = ed.getOffsetAt(end);
       return {
         id: ed,
         text: ed.model.sharedModel.getSource(),
@@ -64,11 +70,8 @@ const kernel: JupyterFrontEndPlugin<void> = {
         empty: from === to,
         rect: () => ({ left: ed.host.getBoundingClientRect().left, bottom: ed.host.getBoundingClientRect().bottom }),
         insert: (text: string) => {
-          const start = ed.getPositionAt(from);
-          const end = ed.getPositionAt(to);
-          // Restore focus before touching the editor selection.  JupyterLab's
-          // CodeMirror adapter can otherwise ignore selection changes made while
-          // the floating keyboard owns focus.
+          // Restore the exact native line/column selection rather than
+          // reconstructing it from an offset.
           ed.focus();
           ed.setSelection(start, end);
           ed.replaceSelection(text);
