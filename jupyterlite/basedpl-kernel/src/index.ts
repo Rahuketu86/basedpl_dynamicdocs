@@ -348,12 +348,7 @@ const kernel: JupyterFrontEndPlugin<void> = {
       }
       inputWidget.show();
       inputWidget.node.style.width = '100%';
-      // JupyterLab historically gives the shell header a zero-height default.
-      // Give that official header area the exact height of our widget so it
-      // participates in normal shell layout rather than overlapping the menu.
-      if (headerPanel) {
-        headerPanel.style.minHeight = Math.max(1, bar.offsetHeight) + 'px';
-      }
+      resizeHeaderToContent();
     };
 
     const cancel = () => { active = undefined; };
@@ -376,21 +371,38 @@ const kernel: JupyterFrontEndPlugin<void> = {
       if (glyph && remembered) remembered.insert(glyph);
     });
 
+    const resizeHeaderToContent = () => {
+      if (!headerPanel || hidden) return;
+      // Measure only after the Lumino widget is visible. Measuring while the
+      // widget/ancestor is hidden returns zero and can collapse the header.
+      requestAnimationFrame(() => {
+        if (hidden) return;
+        inputWidget.show();
+        const height = Math.max(1, bar.scrollHeight, bar.offsetHeight);
+        headerPanel.style.minHeight = height + 'px';
+        app.shell.fit();
+      });
+    };
+
     const showKeyboard = () => {
       hidden = false;
+      inputWidget.show();
       setMode('keyboard');
-      reflow();
+      resizeHeaderToContent();
     };
 
     const showBar = () => {
       hidden = false;
+      inputWidget.show();
       setMode('bar');
-      reflow();
+      resizeHeaderToContent();
     };
 
     const hideInput = () => {
       hidden = true;
       inputWidget.hide();
+      if (headerPanel) headerPanel.style.minHeight = '0px';
+      app.shell.fit();
     };
 
     const hideFromButton = (ev: Event) => {
@@ -428,7 +440,7 @@ const kernel: JupyterFrontEndPlugin<void> = {
     glyphMenu.addItem({ command: commandIds.showKeyboard });
     glyphMenu.addItem({ command: commandIds.showBar });
     glyphMenu.addItem({ command: commandIds.hide });
-    mainMenu.addMenu(glyphMenu, true, { rank: 50 });
+    mainMenu.addMenu(glyphMenu, { rank: 50 });
 
 
 
