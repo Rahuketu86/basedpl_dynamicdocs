@@ -199,11 +199,26 @@ const kernel: JupyterFrontEndPlugin<void> = {
     bar.setAttribute('aria-label', 'BPL symbols');
     const toggle = document.createElement('button');
     toggle.className = 'ngn_o'; toggle.title = 'Collapse Mac keyboard';
-    bar.append(toggle);
-    host.append(bar);
+
+    const hideToggle = document.createElement('button');
+    hideToggle.className = 'ngn_hide';
+    hideToggle.type = 'button';
+    hideToggle.textContent = 'Hide';
+    hideToggle.title = 'Hide BasedPL keyboard and symbol bar';
+
+    const restore = document.createElement('button');
+    restore.className = 'ngn_restore';
+    restore.type = 'button';
+    restore.textContent = '⌨';
+    restore.title = 'Show BasedPL keyboard and symbol bar';
+    restore.hidden = true;
+
+    bar.append(toggle, hideToggle);
+    host.append(bar, restore);
     document.body.appendChild(host);
 
     let collapsed = false;
+    let hidden = false;
     // Full Mac keyboard presentation, matching the WebREPL keyboard. The
     // layout includes ordinary physical keys plus every glyph directly
     // represented on those keycaps. Multi-glyph keys expose each glyph as an
@@ -270,7 +285,9 @@ const kernel: JupyterFrontEndPlugin<void> = {
       toggle.textContent = collapsed ? '＋' : '−';
       toggle.title = collapsed ? 'Expand Mac keyboard' : 'Collapse Mac keyboard';
       bar.classList.toggle('bpl_collapsed', collapsed);
-      document.body.style.paddingTop = bar.hidden || collapsed ? '' : bar.offsetHeight + 'px';
+      bar.hidden = hidden;
+      restore.hidden = !hidden;
+      document.body.style.paddingTop = hidden ? '' : bar.offsetHeight + 'px';
     };
     const cancel = () => { active = undefined; };
 
@@ -282,11 +299,20 @@ const kernel: JupyterFrontEndPlugin<void> = {
       if (b === toggle) {
         collapsed = !collapsed;
         reflow();
+      } else if (b === hideToggle) {
+        hidden = true;
+        reflow();
       } else {
         const glyphTarget = (ev.target as HTMLElement).closest('.bpl_glyph_target') as HTMLElement | null;
         const glyph = glyphTarget?.dataset.glyph ?? b.dataset.glyph;
         if (glyph && remembered) remembered.insert(glyph);
       }
+    });
+
+    restore.addEventListener('mousedown', ev => {
+      ev.preventDefault();
+      hidden = false;
+      reflow();
     });
 
 
@@ -358,6 +384,10 @@ const kernel: JupyterFrontEndPlugin<void> = {
       '#basedpl-input-host .bpl_keylabel { display: block; width: 100%; font-size: 11px; line-height: 13px; opacity: .65; text-align: center; text-transform: uppercase; }',
       '#basedpl-input-host .ngn_o { position: absolute; top: 4px; left: 50%; transform: translateX(-50%); width: 34px; height: 27px; border: 1px solid var(--jp-border-color2, #c8c8c8); border-radius: 7px; background: var(--jp-layout-color2, #f5f5f5); color: var(--jp-ui-font-color1, #111); cursor: pointer; font-size: 21px; line-height: 22px; padding: 0; z-index: 3; box-shadow: 0 1px 2px #0002; }',
       '#basedpl-input-host .ngn_o:hover { background: var(--jp-layout-color3, #e5e5e5); border-color: var(--jp-brand-color1, #2196f3); }',
+      '#basedpl-input-host .ngn_hide { position: absolute; top: 4px; right: 8px; height: 27px; padding: 0 9px; border: 1px solid var(--jp-border-color2, #c8c8c8); border-radius: 7px; background: var(--jp-layout-color2, #f5f5f5); color: var(--jp-ui-font-color1, #111); cursor: pointer; font-size: 12px; line-height: 25px; z-index: 3; box-shadow: 0 1px 2px #0002; }',
+      '#basedpl-input-host .ngn_hide:hover { background: var(--jp-layout-color3, #e5e5e5); border-color: var(--jp-brand-color1, #2196f3); }',
+      '#basedpl-input-host .ngn_restore { position: fixed; right: 12px; bottom: 12px; width: 38px; height: 38px; border: 1px solid var(--jp-border-color1, #bdbdbd); border-radius: 10px; background: var(--jp-layout-color1, #fff); color: var(--jp-ui-font-color1, #111); cursor: pointer; font-size: 20px; line-height: 34px; padding: 0; pointer-events: auto; box-shadow: var(--jp-elevation-z2, 0 2px 8px #0002); }',
+      '#basedpl-input-host .ngn_restore:hover { background: var(--jp-layout-color3, #e5e5e5); border-color: var(--jp-brand-color1, #2196f3); }',
       '@media(max-width: 1100px) { #basedpl-input-host .bpl_key { flex-basis: 0; width: auto; height: 48px; } #basedpl-input-host .bpl_glyphs { font-size: 23px; gap: 2px; } #basedpl-input-host .bpl_glyph_target.primary { font-size: 26px; } #basedpl-input-host .bpl_glyph_target:not(.primary) { font-size: 19px; } #basedpl-input-host .bpl_keyrow { gap: 3px; } #basedpl-input-host .ngn_lb { padding-left: 7px; padding-right: 7px; } }'
     ].join('\n');
     document.head.appendChild(style);
