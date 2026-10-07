@@ -199,23 +199,8 @@ const kernel: JupyterFrontEndPlugin<void> = {
     bar.setAttribute('aria-label', 'BPL symbols');
     const toggle = document.createElement('button');
     toggle.className = 'ngn_o';
-    toggle.title = 'Collapse keyboard';
-
-    const modeSwitch = document.createElement('div');
-    modeSwitch.className = 'bpl_mode';
-    modeSwitch.setAttribute('role', 'group');
-    modeSwitch.setAttribute('aria-label', 'BasedPL input mode');
-    const barMode = document.createElement('button');
-    barMode.type = 'button';
-    barMode.className = 'bpl_mode_button';
-    barMode.textContent = 'Bar';
-    barMode.dataset.mode = 'bar';
-    const keyboardMode = document.createElement('button');
-    keyboardMode.type = 'button';
-    keyboardMode.className = 'bpl_mode_button';
-    keyboardMode.textContent = 'Keyboard';
-    keyboardMode.dataset.mode = 'keyboard';
-    modeSwitch.append(barMode, keyboardMode);
+    toggle.type = 'button';
+    toggle.title = 'Switch to Bar';
 
     const hideToggle = document.createElement('button');
     hideToggle.className = 'ngn_hide';
@@ -230,15 +215,12 @@ const kernel: JupyterFrontEndPlugin<void> = {
     restore.title = 'Show BasedPL input';
     restore.hidden = true;
 
-    bar.append(toggle, modeSwitch, hideToggle);
+    bar.append(toggle, hideToggle);
     host.append(bar, restore);
     document.body.appendChild(host);
 
-    let collapsed = false;
     let hidden = false;
     let mode: 'bar' | 'keyboard' = 'keyboard';
-    const topPanel = document.getElementById('jp-top-panel') as HTMLElement | null;
-    let topPanelPadding = '';
     const keyboardView = document.createElement('div');
     keyboardView.className = 'bpl_keyboard_view';
     const barView = document.createElement('div');
@@ -342,35 +324,35 @@ const kernel: JupyterFrontEndPlugin<void> = {
       mode = next;
       bar.classList.toggle('bpl_mode_bar', mode === 'bar');
       bar.classList.toggle('bpl_mode_keyboard', mode === 'keyboard');
-      barMode.classList.toggle('active', mode === 'bar');
-      keyboardMode.classList.toggle('active', mode === 'keyboard');
       barView.hidden = mode !== 'bar';
       keyboardView.hidden = mode !== 'keyboard';
+      barView.style.display = mode === 'bar' ? 'flex' : 'none';
+      keyboardView.style.display = mode === 'keyboard' ? 'flex' : 'none';
+      toggle.textContent = mode === 'keyboard' ? 'Bar' : 'Keyboard';
       toggle.title = mode === 'keyboard'
-        ? (collapsed ? 'Expand Mac keyboard' : 'Collapse Mac keyboard')
-        : (collapsed ? 'Expand symbol bar' : 'Collapse symbol bar');
+        ? 'Switch to Bar'
+        : 'Switch to Keyboard';
     };
 
     const reflow = () => {
-      toggle.textContent = collapsed ? '＋' : '−';
-      bar.classList.toggle('bpl_collapsed', collapsed);
       bar.hidden = hidden;
+      bar.style.display = hidden ? 'none' : 'flex';
       restore.hidden = !hidden;
+      restore.style.display = hidden ? 'block' : 'none';
 
-      // JupyterLite's Pages build adds a fixed 44px navigation bar (#bpl-tabs).
-      // Do not cover it. If that bar is absent, use the normal top of the page.
+      // #bpl-tabs is a fixed 44px JupyterLite navigation bar inserted by the
+      // Pages build. Keep the BasedPL panel below it; never cover it.
       const nav = document.getElementById('bpl-tabs');
-      const navBottom = nav?.getBoundingClientRect().bottom ?? 0;
-      bar.style.top = Math.max(0, navBottom) + 'px';
+      const navHeight = nav?.getBoundingClientRect().height ?? 44;
+      bar.style.top = Math.max(44, navHeight) + 'px';
 
-      // Reserve real layout space in JupyterLab's shell so neither the compact
-      // Bar nor the full keyboard sits on top of the Lab top/menu area.
+      // Do not mutate JupyterLab's menu/top-panel padding. The old approach
+      // caused the menu to disappear behind the fixed overlay. Instead the
+      // BasedPL panel owns its own vertical slot below the static nav.
       if (topPanel) {
-        topPanelPadding = !hidden ? bar.offsetHeight + 'px' : '';
-        topPanel.style.paddingTop = topPanelPadding;
-        topPanel.style.boxSizing = 'border-box';
+        topPanel.style.paddingTop = '';
       }
-      document.body.style.paddingTop = '';
+      document.body.style.paddingTop = '44px';
       setMode(mode);
     };
     const cancel = () => { active = undefined; };
@@ -378,11 +360,11 @@ const kernel: JupyterFrontEndPlugin<void> = {
     bar.addEventListener('mousedown', ev => {
       const b = (ev.target as HTMLElement).closest('button') as HTMLButtonElement | null;
       if (!b) return;
-      if (b === hideToggle || b === barMode || b === keyboardMode) return;
+      if (b === hideToggle) return;
       ev.preventDefault();
 
       if (b === toggle) {
-        collapsed = !collapsed;
+        setMode(mode === 'keyboard' ? 'bar' : 'keyboard');
         reflow();
         return;
       }
@@ -393,28 +375,27 @@ const kernel: JupyterFrontEndPlugin<void> = {
       if (glyph && remembered) remembered.insert(glyph);
     });
 
-    modeSwitch.addEventListener('click', ev => {
-      ev.preventDefault();
-      const target = (ev.target as HTMLElement).closest('.bpl_mode_button') as HTMLButtonElement | null;
-      if (target?.dataset.mode === 'bar' || target?.dataset.mode === 'keyboard') {
-        setMode(target.dataset.mode);
-        reflow();
-      }
-    });
-
-    hideToggle.addEventListener('pointerdown', ev => {
+    const hideInput = (ev: Event) => {
       ev.preventDefault();
       ev.stopPropagation();
       hidden = true;
-      reflow();
-    });
+      bar.style.display = 'none';
+      bar.hidden = true;
+      restore.hidden = false;
+      restore.style.display = 'block';
+      document.body.style.paddingTop = '';
+    };
+    hideToggle.addEventListener('pointerdown', hideInput);
+    hideToggle.addEventListener('click', hideInput);
 
-    restore.addEventListener('pointerdown', ev => {
+    const restoreInput = (ev: Event) => {
       ev.preventDefault();
       ev.stopPropagation();
       hidden = false;
       reflow();
-    });
+    };
+    restore.addEventListener('pointerdown', restoreInput);
+    restore.addEventListener('click', restoreInput);
 
 
     const remember = () => { last.editor = editor(); };
@@ -466,9 +447,7 @@ const kernel: JupyterFrontEndPlugin<void> = {
     style.textContent = [
       '#basedpl-input-host { position: fixed; inset: 0; z-index: 2147483647; pointer-events: none; }',
       '#basedpl-input-host .ngn_lb { position: fixed; top: 0; left: 50%; right: auto; transform: translateX(-50%); width: min(calc(100vw - 16px), 2000px); max-width: calc(100vw - 16px); box-sizing: border-box; pointer-events: auto; background: var(--jp-layout-color1, #fff); color: var(--jp-ui-font-color1, #111); font-family: var(--jp-ui-font-family, sans-serif); border: 1px solid var(--jp-border-color1, #bdbdbd); border-top: 0; border-radius: 0 0 12px 12px; padding: 34px 14px 10px; display: flex; flex-direction: column; align-items: center; gap: 6px; box-shadow: var(--jp-elevation-z2, 0 2px 8px #0002); }',
-      '#basedpl-input-host .ngn_lb.bpl_collapsed { padding: 3px; min-height: 38px; border-radius: 0 0 10px 10px; }',
-      '#basedpl-input-host .bpl_collapsed .bpl_keyrow { display: none; }',
-      '#basedpl-input-host .bpl_keyrow { display: flex; justify-content: center; align-items: stretch; gap: 5px; width: 100%; }',
+      '#basedpl-input-host .bpl_keyrow { display: flex; justify-content: center; align-items: stretch; gap: 5px; width: 100%; box-sizing: border-box; }',
       '#basedpl-input-host .bpl_key { flex: 1 1 0; min-width: 0; width: auto; height: 52px; padding: 3px; border: 1px solid var(--jp-border-color2, #c8c8c8); border-radius: 7px; background: var(--jp-layout-color2, #f5f5f5); color: var(--jp-ui-font-color1, #111); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; box-sizing: border-box; user-select: none; font-family: var(--jp-ui-font-family, sans-serif); }',
       '#basedpl-input-host .bpl_key:hover { background: var(--jp-layout-color3, #e5e5e5); border-color: var(--jp-brand-color1, #2196f3); }',
       '#basedpl-input-host .bpl_key:active { background: var(--jp-brand-color2, #1976d2); color: var(--jp-inverse-layout-color1, #fff); }',
@@ -481,18 +460,16 @@ const kernel: JupyterFrontEndPlugin<void> = {
       '#basedpl-input-host .bpl_glyph_target:not(.primary) { font-size: 22px; opacity: .82; }',
       '#basedpl-input-host .bpl_glyph_target:hover { background: var(--jp-layout-color3, #e5e5e5); color: var(--jp-brand-color1, #1976d2); }',
       '#basedpl-input-host .bpl_keylabel { display: block; width: 100%; font-size: 11px; line-height: 13px; opacity: .65; text-align: center; text-transform: uppercase; }',
-      '#basedpl-input-host .ngn_o { position: absolute !important; top: 4px !important; left: 10px !important; width: 34px; height: 27px; border: 1px solid var(--jp-border-color2, #c8c8c8); border-radius: 7px; background: var(--jp-layout-color2, #f5f5f5); color: var(--jp-ui-font-color1, #111); cursor: pointer; font-size: 21px; line-height: 22px; padding: 0; z-index: 3; box-shadow: 0 1px 2px #0002; }',
+      '#basedpl-input-host .ngn_o { position: absolute !important; top: 4px !important; left: 10px !important; min-width: 72px; height: 27px; border: 1px solid var(--jp-border-color2, #c8c8c8); border-radius: 7px; background: var(--jp-layout-color2, #f5f5f5); color: var(--jp-ui-font-color1, #111); cursor: pointer; font-size: 12px; line-height: 25px; padding: 0 9px; z-index: 3; box-shadow: 0 1px 2px #0002; }',
       '#basedpl-input-host .ngn_o:hover { background: var(--jp-layout-color3, #e5e5e5); border-color: var(--jp-brand-color1, #2196f3); }',
-      '#basedpl-input-host .bpl_mode { display:flex !important; align-items:center; gap:0; position:absolute !important; top:4px !important; left:50% !important; left:50%; transform:translateX(-50%); z-index:3; border:1px solid var(--jp-border-color2,#c8c8c8); border-radius:7px; overflow:hidden; background:var(--jp-layout-color2,#f5f5f5); }',
-      '#basedpl-input-host .bpl_mode_button { display:block; pointer-events:auto; border:0; border-right:1px solid var(--jp-border-color2,#c8c8c8); background:transparent; color:var(--jp-ui-font-color1,#111); padding:4px 10px; height:27px; font-size:11px; cursor:pointer; }',
-      '#basedpl-input-host .bpl_mode_button:last-child { border-right:0; }',
-      '#basedpl-input-host .bpl_mode_button.active { background:var(--jp-brand-color1,#2196f3); color:var(--jp-inverse-layout-color1,#fff); }',
       '#basedpl-input-host .ngn_hide { position: absolute; top: 4px; right: 8px; height: 27px; padding: 0 9px; border: 1px solid var(--jp-border-color2, #c8c8c8); border-radius: 7px; background: var(--jp-layout-color2, #f5f5f5); color: var(--jp-ui-font-color1, #111); cursor: pointer; font-size: 12px; line-height: 25px; z-index: 3; box-shadow: 0 1px 2px #0002; pointer-events:auto; }',
       '#basedpl-input-host .ngn_hide:hover { background: var(--jp-layout-color3, #e5e5e5); border-color: var(--jp-brand-color1,#1976d2); }',
-      '#basedpl-input-host .bpl_bar_view { display:flex; align-items:center; justify-content:flex-start; flex-wrap:nowrap; gap:3px; width:100%; padding:1px 44px 0; box-sizing:border-box; height:40px; max-height:40px; overflow-x:auto; overflow-y:hidden; white-space:nowrap; scrollbar-width:thin; }',
+      '#basedpl-input-host .bpl_bar_view { display:flex !important; align-items:center; justify-content:flex-start; flex-wrap:nowrap; gap:3px; width:100%; padding:1px 82px 0 82px; box-sizing:border-box; height:40px; max-height:40px; overflow-x:auto; overflow-y:hidden; white-space:nowrap; scrollbar-width:thin; }',
+      '#basedpl-input-host .bpl_bar_view[hidden] { display:none !important; }',
+      '#basedpl-input-host .bpl_keyboard_view { display:flex; flex-direction:column; align-items:stretch; width:100%; }',
+      '#basedpl-input-host .bpl_keyboard_view[hidden] { display:none !important; }',
       '#basedpl-input-host .bpl_bar_glyph { min-width:34px; height:34px; padding:2px 7px; border:1px solid var(--jp-border-color2,#c8c8c8); border-radius:6px; background:var(--jp-layout-color2,#f5f5f5); color:var(--jp-ui-font-color1,#111); font-family:var(--jp-content-font-family,sans-serif); font-size:22px; cursor:pointer; }',
       '#basedpl-input-host .bpl_bar_glyph:hover { background:var(--jp-layout-color3,#e5e5e5); border-color:var(--jp-brand-color1,#2196f3); }',
-      '#basedpl-input-host .bpl_mode_bar { padding-bottom:7px; }',
       '#basedpl-input-host .ngn_restore { position: fixed; right: 12px; bottom: 12px; width: 38px; height: 38px; border: 1px solid var(--jp-border-color1, #bdbdbd); border-radius: 10px; background: var(--jp-layout-color1, #fff); color: var(--jp-ui-font-color1, #111); cursor: pointer; font-size: 20px; line-height: 34px; padding: 0; pointer-events: auto; box-shadow: var(--jp-elevation-z2, 0 2px 8px #0002); }',
       '#basedpl-input-host .ngn_restore:hover { background: var(--jp-layout-color3, #e5e5e5); border-color: var(--jp-brand-color1, #2196f3); }',
       '@media(max-width: 1100px) { #basedpl-input-host .bpl_key { flex-basis: 0; width: auto; height: 48px; } #basedpl-input-host .bpl_glyphs { font-size: 23px; gap: 2px; } #basedpl-input-host .bpl_glyph_target.primary { font-size: 26px; } #basedpl-input-host .bpl_glyph_target:not(.primary) { font-size: 19px; } #basedpl-input-host .bpl_keyrow { gap: 3px; } #basedpl-input-host .ngn_lb { padding-left: 7px; padding-right: 7px; } }'
