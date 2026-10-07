@@ -23,6 +23,7 @@ const clickGlyphCommand = async (name) => {
 try {
   await page.goto(url.toString(), { waitUntil: 'domcontentloaded', timeout: 60_000 });
   await page.locator('#jp-main-content-panel').waitFor({ state: 'visible', timeout: 60_000 });
+  await page.locator('#jupyterlab-splash').waitFor({ state: 'hidden', timeout: 60_000 });
   await page.locator('#basedpl-input-widget').waitFor({ state: 'visible', timeout: 60_000 });
 
   const initial = await page.evaluate(() => ({
