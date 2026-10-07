@@ -512,7 +512,7 @@ const kernel: JupyterFrontEndPlugin<void> = {
 
     const style = document.createElement('style');
     style.textContent = [
-      '#jp-header-panel { width: 100%; box-sizing: border-box; }',
+      '#jp-header-panel { width: 100%; box-sizing: border-box; position: relative; z-index: 1001 !important; }',
       '#jp-header-panel > .bpl-header-widget { width: 100% !important; flex: 0 0 auto; box-sizing: border-box; min-height: 1px !important; }',
       '#basedpl-input-host { width: 100%; box-sizing: border-box; pointer-events: none; }',
       '#basedpl-input-host .ngn_lb { position: relative; width: 100%; box-sizing: border-box; pointer-events: auto; background: var(--jp-layout-color1, #fff); color: var(--jp-ui-font-color1, #111); font-family: var(--jp-ui-font-family, sans-serif); border: 1px solid var(--jp-border-color1, #bdbdbd); border-radius: 0 0 8px 8px; padding: 4px 10px 8px; display: flex; flex-direction: column; align-items: center; gap: 6px; box-shadow: var(--jp-elevation-z1, 0 1px 4px #0002); }',
