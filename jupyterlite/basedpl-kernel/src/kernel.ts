@@ -26,9 +26,29 @@ export class BasedPLKernel extends BaseKernel {
 
   constructor(options: any) {
     super(options);
+    // `new Worker(new URL('./worker.js', import.meta.url), ...)` must stay
+    // written exactly like this, inline: webpack 5 only recognizes this
+    // exact literal pattern as a worker-asset reference and statically
+    // bundles/resolves it. Splitting it into `const url = new URL(...)` (to
+    // then add a query param) breaks that detection -- `import.meta.url`
+    // silently stops resolving to a real URL (it stringified to the literal
+    // text "[object Module]" instead), so the worker loaded a broken,
+    // nonexistent path. Nothing threw; the kernel just never came up, which
+    // is why every notebook hung at "Busy" forever with no visible error.
     this.worker = new Worker(new URL('./worker.js', import.meta.url), {
       type: 'module'
     });
+    // `•nget`/`•nput`/`•load` resolve relative paths against this base. The
+    // worker has no notion of the page's own URL (its own `self.location` is
+    // the worker script's own location, not the page's), so compute it here
+    // and send it over -- after worker construction, not baked into the
+    // worker's URL, for the reason above. `self.location`, not
+    // `window.location`: this constructor can run inside a Worker too
+    // (JupyterLite instantiates kernel classes that way), where `window`
+    // doesn't exist at all. JupyterLite serves the `jupyterlite/files/`
+    // build output as plain static files one level up from the lab page.
+    const filesBase = new URL('../files/', self.location.href).href;
+    this.worker.postMessage({ type: 'configure', base: filesBase });
 
     this.bplReady = new Promise((resolve, reject) => {
       const onMessage = (event: MessageEvent) => {
@@ -74,14 +94,14 @@ export class BasedPLKernel extends BaseKernel {
   async kernelInfoRequest(): Promise<KernelMessage.IInfoReplyMsg['content']> {
     return {
       implementation: 'BasedPL',
-      implementation_version: '0.1.24',
+      implementation_version: '0.1.28',
       language_info: {
         codemirror_mode: { name: 'apl' },
         file_extension: '.bpl',
         mimetype: 'text/x-apl',
         name: 'basedpl',
         pygments_lexer: 'apl',
-        version: '0.1.24'
+        version: '0.1.28'
       },
       protocol_version: '5.3',
       status: 'ok',

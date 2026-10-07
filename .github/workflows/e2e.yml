@@ -1,0 +1,38 @@
+name: Browser E2E (manual)
+
+# Deliberately separate from pages.yml: these tests run a real browser
+# against the deployed site, take several minutes, and have no business
+# gating or blocking the Pages build/deploy or the Cloudflare Worker deploy.
+# Trigger by hand from the Actions tab (or `gh workflow run e2e.yml`) when
+# you actually want to run them.
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "Site to test against (defaults to the production deployment)"
+        required: false
+        type: string
+
+jobs:
+  e2e:
+    name: Browser E2E against deployed Pages
+    runs-on: ubuntu-latest
+    env:
+      BASE_URL: ${{ inputs.base_url || 'https://rahuketu86.github.io/basedpl_dynamicdocs/' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Playwright
+        run: |
+          npm init -y
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run deployed browser E2E
+        run: |
+          node tests/e2e/repl.mjs
+          node tests/e2e/jupyterlite-glyph.mjs
+          node tests/e2e/example-notebooks.mjs

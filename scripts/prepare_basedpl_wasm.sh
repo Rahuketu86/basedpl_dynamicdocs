@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REV="44352d9b63ef7532055f373c6cc32984430f71f5"
+REV="f340438bb01536bda09cf3ee16a0eb057d1372c0"  # v0.1.28 -- matches the officially published/tested `basedpl` npm package
 DEST="${1:-build/basedpl}"
 
 rm -rf "$DEST"

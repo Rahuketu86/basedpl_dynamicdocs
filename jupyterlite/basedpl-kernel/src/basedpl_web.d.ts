@@ -6,6 +6,7 @@ declare module './basedpl_web.js' {
     complete_glyphs(prefix: string): unknown;
   }
 
+  export function configure(base: string): void;
   export default function init(): Promise<void>;
 }
 

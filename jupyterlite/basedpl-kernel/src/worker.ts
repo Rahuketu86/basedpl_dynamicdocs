@@ -1,13 +1,23 @@
-import init, { BplSession } from './basedpl_web.js';
+import init, { BplSession, configure } from './basedpl_web.js';
 
 type Request =
   | { id: number; type: 'eval'; code: string }
   | { id: number; type: 'complete'; prefix: string; glyphs?: boolean };
 
+type ConfigureMessage = { type: 'configure'; base: string };
+
 let session: BplSession | null = null;
+// `configure()` (the wasm export) can't be called before `init()` resolves,
+// but kernel.ts sends the "configure" message as soon as the worker is
+// constructed -- which can race ahead of `init()` finishing. Buffer it if
+// so, and apply it right after `init()` resolves instead.
+let wasmReady = false;
+let pendingBase: string | null = null;
 
 async function start(): Promise<void> {
   await init();
+  wasmReady = true;
+  if (pendingBase !== null) configure(pendingBase);
   session = new BplSession();
   self.postMessage({ type: 'ready' });
 }
@@ -17,7 +27,12 @@ start().catch(error => {
 });
 
 self.onmessage = event => {
-  const request = event.data as Request;
+  const request = event.data as Request | ConfigureMessage;
+  if (request.type === 'configure') {
+    if (wasmReady) configure(request.base);
+    else pendingBase = request.base;
+    return;
+  }
   if (!session) {
     self.postMessage({ id: request.id, type: 'error', error: 'BasedPL WASM is not ready' });
     return;

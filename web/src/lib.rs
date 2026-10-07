@@ -2,6 +2,11 @@ use basedpl::{EvalOptions, Session};
 use std::sync::{Arc, Mutex};
 use wasm_bindgen::prelude::*;
 
+/// Sets the URL that relative paths resolve against for `•nget`/`•nput`/`•load`.
+/// Without this, those read/write against an empty base and simply error.
+#[wasm_bindgen]
+pub fn configure(base: String) { basedpl::configure_browser(base); }
+
 #[wasm_bindgen]
 pub struct BplSession { session: Session }
 
