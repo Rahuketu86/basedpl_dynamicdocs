@@ -19,7 +19,9 @@
     "@jupyterlab/application": "4.5.11",
     "@jupyterlab/services": "7.5.11",
     "@jupyterlite/services": "0.7.6",
-    "@jupyterlab/notebook": "4.5.11"
+    "@jupyterlab/notebook": "4.5.11",
+    "@jupyterlab/mainmenu": "4.5.11",
+    "@lumino/widgets": "^2.7.0"
   },
   "devDependencies": {
     "@jupyterlab/builder": "4.5.11",
