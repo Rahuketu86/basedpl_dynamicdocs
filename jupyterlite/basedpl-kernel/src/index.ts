@@ -344,7 +344,7 @@ const kernel: JupyterFrontEndPlugin<void> = {
       if (hidden) {
         inputWidget.hide();
         inputWidget.node.style.minHeight = '0px';
-        if (headerPanel?.parent) BoxLayout.setSizeBasis(headerPanel.parent, 0);
+        if (inputWidget.parent) BoxLayout.setSizeBasis(inputWidget.parent, 0);
         if (headerPanel) headerPanel.style.minHeight = '0px';
         return;
       }
@@ -382,7 +382,8 @@ const kernel: JupyterFrontEndPlugin<void> = {
         if (hidden) return;
         inputWidget.show();
         inputWidget.node.style.display = 'block';
-        const height = Math.max(1, bar.scrollHeight, bar.offsetHeight);
+        const minimumHeight = mode === 'keyboard' ? 300 : 50;
+        const height = Math.max(minimumHeight, bar.scrollHeight, bar.offsetHeight);
         // The JupyterLab header panel is initially zero-height. Lumino sizes
         // its child from the child's minimum height; setting the minimum on
         // the actual shell widget is the supported fix for this header-area
@@ -392,7 +393,7 @@ const kernel: JupyterFrontEndPlugin<void> = {
         // not reliably reserve space for a zero-stretch header child.
         // Set the actual BoxLayout size basis so the top panel is laid out
         // below the BasedPL widget instead of painting over it.
-        if (headerPanel?.parent) BoxLayout.setSizeBasis(headerPanel.parent, height);
+        if (inputWidget.parent) BoxLayout.setSizeBasis(inputWidget.parent, height);
         headerPanel.style.minHeight = height + 'px';
         app.shell.fit();
       });
@@ -520,7 +521,7 @@ const kernel: JupyterFrontEndPlugin<void> = {
     const style = document.createElement('style');
     style.textContent = [
       '#jp-header-panel { width: 100%; box-sizing: border-box; position: relative; z-index: 1001 !important; }',
-      '#jp-header-panel > .bpl-header-widget { width: 100% !important; flex: 0 0 auto; box-sizing: border-box; min-height: 1px !important; }',
+      '#jp-header-panel > .bpl-header-widget { width: 100% !important; flex: 0 0 auto; box-sizing: border-box; min-height: 1px; }',
       '#basedpl-input-host { width: 100%; box-sizing: border-box; pointer-events: none; }',
       '#basedpl-input-host .ngn_lb { position: relative; width: 100%; box-sizing: border-box; pointer-events: auto; background: var(--jp-layout-color1, #fff); color: var(--jp-ui-font-color1, #111); font-family: var(--jp-ui-font-family, sans-serif); border: 1px solid var(--jp-border-color1, #bdbdbd); border-radius: 0 0 8px 8px; padding: 4px 10px 8px; display: flex; flex-direction: column; align-items: center; gap: 6px; box-shadow: var(--jp-elevation-z1, 0 1px 4px #0002); }',
       '#basedpl-input-host .bpl_keyrow { display: flex; justify-content: center; align-items: stretch; gap: 5px; width: 100%; box-sizing: border-box; }',
