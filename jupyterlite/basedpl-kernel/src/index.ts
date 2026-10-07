@@ -198,27 +198,79 @@ const kernel: JupyterFrontEndPlugin<void> = {
     bar.className = 'ngn_lb';
     bar.setAttribute('aria-label', 'BPL symbols');
     const toggle = document.createElement('button');
-    toggle.className = 'ngn_o'; toggle.title = 'Collapse Mac keyboard';
+    toggle.className = 'ngn_o';
+    toggle.title = 'Collapse keyboard';
+
+    const modeSwitch = document.createElement('div');
+    modeSwitch.className = 'bpl_mode';
+    modeSwitch.setAttribute('role', 'group');
+    modeSwitch.setAttribute('aria-label', 'BasedPL input mode');
+    const barMode = document.createElement('button');
+    barMode.type = 'button';
+    barMode.className = 'bpl_mode_button';
+    barMode.textContent = 'Bar';
+    barMode.dataset.mode = 'bar';
+    const keyboardMode = document.createElement('button');
+    keyboardMode.type = 'button';
+    keyboardMode.className = 'bpl_mode_button';
+    keyboardMode.textContent = 'Keyboard';
+    keyboardMode.dataset.mode = 'keyboard';
+    modeSwitch.append(barMode, keyboardMode);
 
     const hideToggle = document.createElement('button');
     hideToggle.className = 'ngn_hide';
     hideToggle.type = 'button';
     hideToggle.textContent = 'Hide';
-    hideToggle.title = 'Hide BasedPL keyboard and symbol bar';
+    hideToggle.title = 'Hide BasedPL input';
 
     const restore = document.createElement('button');
     restore.className = 'ngn_restore';
     restore.type = 'button';
     restore.textContent = '⌨';
-    restore.title = 'Show BasedPL keyboard and symbol bar';
+    restore.title = 'Show BasedPL input';
     restore.hidden = true;
 
-    bar.append(toggle, hideToggle);
+    bar.append(toggle, modeSwitch, hideToggle);
     host.append(bar, restore);
     document.body.appendChild(host);
 
     let collapsed = false;
     let hidden = false;
+    let mode: 'bar' | 'keyboard' = 'keyboard';
+    const keyboardView = document.createElement('div');
+    keyboardView.className = 'bpl_keyboard_view';
+    const barView = document.createElement('div');
+    barView.className = 'bpl_bar_view';
+
+    // Compact glyph Bar view, reconstructed from the same BasedPL layout used
+    // by the keyboard. It exposes primary glyphs and follow-up glyphs directly.
+    const barGlyphs: string[] = [];
+    const barSeen = new Set<string>();
+    const addBarGlyph = (glyph: string) => {
+      if (!glyph || barSeen.has(glyph)) return;
+      barSeen.add(glyph);
+      barGlyphs.push(glyph);
+    };
+    const collectBarGlyphs = (value: any) => {
+      if (typeof value === 'string') {
+        if (Array.from(value).length === 1 && value.trim()) addBarGlyph(value);
+      } else if (value && typeof value === 'object') {
+        for (const child of Object.values(value)) collectBarGlyphs(child);
+      }
+    };
+    collectBarGlyphs(macLayout.option);
+    collectBarGlyphs(macLayout.states);
+
+    for (const glyph of barGlyphs) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'bpl_bar_glyph';
+      b.dataset.glyph = glyph;
+      b.textContent = glyph;
+      b.title = (glyphNames[glyph] ?? glyph);
+      barView.appendChild(b);
+    }
+
     // Full Mac keyboard presentation, matching the WebREPL keyboard. The
     // layout includes ordinary physical keys plus every glyph directly
     // represented on those keycaps. Multi-glyph keys expose each glyph as an
@@ -279,15 +331,31 @@ const kernel: JupyterFrontEndPlugin<void> = {
         if (glyphTargets.length === 1) b.dataset.glyph = glyphTargets[0];
         rowEl.appendChild(b);
       }
-      bar.appendChild(rowEl);
+      keyboardView.appendChild(rowEl);
     }
+
+    bar.append(barView, keyboardView);
+
+    const setMode = (next: 'bar' | 'keyboard') => {
+      mode = next;
+      bar.classList.toggle('bpl_mode_bar', mode === 'bar');
+      bar.classList.toggle('bpl_mode_keyboard', mode === 'keyboard');
+      barMode.classList.toggle('active', mode === 'bar');
+      keyboardMode.classList.toggle('active', mode === 'keyboard');
+      barView.hidden = mode !== 'bar';
+      keyboardView.hidden = mode !== 'keyboard';
+      toggle.title = mode === 'keyboard'
+        ? (collapsed ? 'Expand Mac keyboard' : 'Collapse Mac keyboard')
+        : (collapsed ? 'Expand symbol bar' : 'Collapse symbol bar');
+    };
+
     const reflow = () => {
       toggle.textContent = collapsed ? '＋' : '−';
-      toggle.title = collapsed ? 'Expand Mac keyboard' : 'Collapse Mac keyboard';
       bar.classList.toggle('bpl_collapsed', collapsed);
       bar.hidden = hidden;
       restore.hidden = !hidden;
       document.body.style.paddingTop = hidden ? '' : bar.offsetHeight + 'px';
+      setMode(mode);
     };
     const cancel = () => { active = undefined; };
 
@@ -299,17 +367,39 @@ const kernel: JupyterFrontEndPlugin<void> = {
       if (b === toggle) {
         collapsed = !collapsed;
         reflow();
-      } else if (b === hideToggle) {
-        hidden = true;
+        return;
+      }
+      if (b === hideToggle || b === barMode || b === keyboardMode) return;
+
+      const glyphTarget = (ev.target as HTMLElement).closest('.bpl_glyph_target') as HTMLElement | null;
+      const glyph = glyphTarget?.dataset.glyph ?? b.dataset.glyph;
+      if (glyph && remembered) remembered.insert(glyph);
+    });
+
+    modeSwitch.addEventListener('click', ev => {
+      ev.preventDefault();
+      const target = (ev.target as HTMLElement).closest('.bpl_mode_button') as HTMLButtonElement | null;
+      if (target?.dataset.mode === 'bar' || target?.dataset.mode === 'keyboard') {
+        setMode(target.dataset.mode);
         reflow();
-      } else {
-        const glyphTarget = (ev.target as HTMLElement).closest('.bpl_glyph_target') as HTMLElement | null;
-        const glyph = glyphTarget?.dataset.glyph ?? b.dataset.glyph;
-        if (glyph && remembered) remembered.insert(glyph);
       }
     });
 
-    restore.addEventListener('mousedown', ev => {
+    barView.addEventListener('mousedown', ev => {
+      ev.preventDefault();
+      const remembered = snapshotEditor() ?? last.editor;
+      const b = (ev.target as HTMLElement).closest('button') as HTMLButtonElement | null;
+      if (b?.dataset.glyph && remembered) remembered.insert(b.dataset.glyph);
+    });
+
+    hideToggle.addEventListener('click', ev => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      hidden = true;
+      reflow();
+    });
+
+    restore.addEventListener('click', ev => {
       ev.preventDefault();
       hidden = false;
       reflow();
@@ -382,10 +472,18 @@ const kernel: JupyterFrontEndPlugin<void> = {
       '#basedpl-input-host .bpl_glyph_target:not(.primary) { font-size: 22px; opacity: .82; }',
       '#basedpl-input-host .bpl_glyph_target:hover { background: var(--jp-layout-color3, #e5e5e5); color: var(--jp-brand-color1, #1976d2); }',
       '#basedpl-input-host .bpl_keylabel { display: block; width: 100%; font-size: 11px; line-height: 13px; opacity: .65; text-align: center; text-transform: uppercase; }',
-      '#basedpl-input-host .ngn_o { position: absolute; top: 4px; left: 50%; transform: translateX(-50%); width: 34px; height: 27px; border: 1px solid var(--jp-border-color2, #c8c8c8); border-radius: 7px; background: var(--jp-layout-color2, #f5f5f5); color: var(--jp-ui-font-color1, #111); cursor: pointer; font-size: 21px; line-height: 22px; padding: 0; z-index: 3; box-shadow: 0 1px 2px #0002; }',
+      '#basedpl-input-host .ngn_o { position: absolute; top: 4px; left: 10px; width: 34px; height: 27px; border: 1px solid var(--jp-border-color2, #c8c8c8); border-radius: 7px; background: var(--jp-layout-color2, #f5f5f5); color: var(--jp-ui-font-color1, #111); cursor: pointer; font-size: 21px; line-height: 22px; padding: 0; z-index: 3; box-shadow: 0 1px 2px #0002; }',
       '#basedpl-input-host .ngn_o:hover { background: var(--jp-layout-color3, #e5e5e5); border-color: var(--jp-brand-color1, #2196f3); }',
-      '#basedpl-input-host .ngn_hide { position: absolute; top: 4px; right: 8px; height: 27px; padding: 0 9px; border: 1px solid var(--jp-border-color2, #c8c8c8); border-radius: 7px; background: var(--jp-layout-color2, #f5f5f5); color: var(--jp-ui-font-color1, #111); cursor: pointer; font-size: 12px; line-height: 25px; z-index: 3; box-shadow: 0 1px 2px #0002; }',
-      '#basedpl-input-host .ngn_hide:hover { background: var(--jp-layout-color3, #e5e5e5); border-color: var(--jp-brand-color1, #2196f3); }',
+      '#basedpl-input-host .bpl_mode { display:flex; align-items:center; gap:0; position:absolute; top:4px; left:50%; transform:translateX(-50%); z-index:3; border:1px solid var(--jp-border-color2,#c8c8c8); border-radius:7px; overflow:hidden; background:var(--jp-layout-color2,#f5f5f5); }',
+      '#basedpl-input-host .bpl_mode_button { border:0; border-right:1px solid var(--jp-border-color2,#c8c8c8); background:transparent; color:var(--jp-ui-font-color1,#111); padding:4px 10px; height:27px; font-size:11px; cursor:pointer; }',
+      '#basedpl-input-host .bpl_mode_button:last-child { border-right:0; }',
+      '#basedpl-input-host .bpl_mode_button.active { background:var(--jp-brand-color1,#2196f3); color:var(--jp-inverse-layout-color1,#fff); }',
+      '#basedpl-input-host .ngn_hide { position: absolute; top: 4px; right: 8px; height: 27px; padding: 0 9px; border: 1px solid var(--jp-border-color2, #c8c8c8); border-radius: 7px; background: var(--jp-layout-color2, #f5f5f5); color: var(--jp-ui-font-color1, #111); cursor: pointer; font-size: 12px; line-height: 25px; z-index: 3; box-shadow: 0 1px 2px #0002; pointer-events:auto; }',
+      '#basedpl-input-host .ngn_hide:hover { background: var(--jp-layout-color3, #e5e5e5); border-color: var(--jp-brand-color1,#1976d2); }',
+      '#basedpl-input-host .bpl_bar_view { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:3px; width:100%; padding:1px 44px 0; box-sizing:border-box; max-height:58px; overflow:auto; }',
+      '#basedpl-input-host .bpl_bar_glyph { min-width:34px; height:34px; padding:2px 7px; border:1px solid var(--jp-border-color2,#c8c8c8); border-radius:6px; background:var(--jp-layout-color2,#f5f5f5); color:var(--jp-ui-font-color1,#111); font-family:var(--jp-content-font-family,sans-serif); font-size:22px; cursor:pointer; }',
+      '#basedpl-input-host .bpl_bar_glyph:hover { background:var(--jp-layout-color3,#e5e5e5); border-color:var(--jp-brand-color1,#2196f3); }',
+      '#basedpl-input-host .bpl_mode_bar { padding-bottom:7px; }',
       '#basedpl-input-host .ngn_restore { position: fixed; right: 12px; bottom: 12px; width: 38px; height: 38px; border: 1px solid var(--jp-border-color1, #bdbdbd); border-radius: 10px; background: var(--jp-layout-color1, #fff); color: var(--jp-ui-font-color1, #111); cursor: pointer; font-size: 20px; line-height: 34px; padding: 0; pointer-events: auto; box-shadow: var(--jp-elevation-z2, 0 2px 8px #0002); }',
       '#basedpl-input-host .ngn_restore:hover { background: var(--jp-layout-color3, #e5e5e5); border-color: var(--jp-brand-color1, #2196f3); }',
       '@media(max-width: 1100px) { #basedpl-input-host .bpl_key { flex-basis: 0; width: auto; height: 48px; } #basedpl-input-host .bpl_glyphs { font-size: 23px; gap: 2px; } #basedpl-input-host .bpl_glyph_target.primary { font-size: 26px; } #basedpl-input-host .bpl_glyph_target:not(.primary) { font-size: 19px; } #basedpl-input-host .bpl_keyrow { gap: 3px; } #basedpl-input-host .ngn_lb { padding-left: 7px; padding-right: 7px; } }'
