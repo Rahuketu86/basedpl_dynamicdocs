@@ -221,6 +221,8 @@ const kernel: JupyterFrontEndPlugin<void> = {
 
     let hidden = false;
     let mode: 'bar' | 'keyboard' = 'keyboard';
+    const topPanel = document.getElementById('jp-top-panel') as HTMLElement | null;
+    const mainPanel = document.getElementById('jp-main-content-panel') as HTMLElement | null;
     const keyboardView = document.createElement('div');
     keyboardView.className = 'bpl_keyboard_view';
     const barView = document.createElement('div');
@@ -335,25 +337,35 @@ const kernel: JupyterFrontEndPlugin<void> = {
     };
 
     const reflow = () => {
+      // Apply the mode first so offsetHeight is the actual Bar or Keyboard height.
+      setMode(mode);
+
       bar.hidden = hidden;
       bar.style.display = hidden ? 'none' : 'flex';
       restore.hidden = !hidden;
       restore.style.display = hidden ? 'block' : 'none';
 
-      // #bpl-tabs is a fixed 44px JupyterLite navigation bar inserted by the
-      // Pages build. Keep the BasedPL panel below it; never cover it.
+      // The Pages build puts a fixed 44px navigation strip outside JupyterLab.
+      // JupyterLab then has its own top panel containing the logo/main menu.
+      // Place BasedPL *after both* so neither top bar can ever be covered.
       const nav = document.getElementById('bpl-tabs');
-      const navHeight = nav?.getBoundingClientRect().height ?? 44;
-      bar.style.top = Math.max(44, navHeight) + 'px';
+      const navRect = nav?.getBoundingClientRect();
+      const navBottom = navRect?.bottom ?? 44;
+      const topRect = topPanel?.getBoundingClientRect();
+      const labTopBottom = topRect?.bottom ?? navBottom;
+      bar.style.top = Math.max(navBottom, labTopBottom) + 'px';
 
-      // Do not mutate JupyterLab's menu/top-panel padding. The old approach
-      // caused the menu to disappear behind the fixed overlay. Instead the
-      // BasedPL panel owns its own vertical slot below the static nav.
-      if (topPanel) {
-        topPanel.style.paddingTop = '';
+      // The BasedPL panel is fixed, so reserve exactly its height in the main
+      // JupyterLab content area. This makes the notebook move down instead of
+      // being hidden behind the keyboard.
+      if (mainPanel) {
+        mainPanel.style.paddingTop = hidden ? '' : bar.offsetHeight + 'px';
+        mainPanel.style.boxSizing = 'border-box';
       }
+
+      // Preserve the static Pages navigation strip; do not pad the JupyterLab
+      // top panel itself.
       document.body.style.paddingTop = '44px';
-      setMode(mode);
     };
     const cancel = () => { active = undefined; };
 
@@ -383,7 +395,8 @@ const kernel: JupyterFrontEndPlugin<void> = {
       bar.hidden = true;
       restore.hidden = false;
       restore.style.display = 'block';
-      document.body.style.paddingTop = '';
+      if (mainPanel) mainPanel.style.paddingTop = '';
+      document.body.style.paddingTop = '44px';
     };
     hideToggle.addEventListener('pointerdown', hideInput);
     hideToggle.addEventListener('click', hideInput);
@@ -446,7 +459,7 @@ const kernel: JupyterFrontEndPlugin<void> = {
     const style = document.createElement('style');
     style.textContent = [
       '#basedpl-input-host { position: fixed; inset: 0; z-index: 2147483647; pointer-events: none; }',
-      '#basedpl-input-host .ngn_lb { position: fixed; top: 0; left: 50%; right: auto; transform: translateX(-50%); width: min(calc(100vw - 16px), 2000px); max-width: calc(100vw - 16px); box-sizing: border-box; pointer-events: auto; background: var(--jp-layout-color1, #fff); color: var(--jp-ui-font-color1, #111); font-family: var(--jp-ui-font-family, sans-serif); border: 1px solid var(--jp-border-color1, #bdbdbd); border-top: 0; border-radius: 0 0 12px 12px; padding: 34px 14px 10px; display: flex; flex-direction: column; align-items: center; gap: 6px; box-shadow: var(--jp-elevation-z2, 0 2px 8px #0002); }',
+      '#basedpl-input-host .ngn_lb { position: fixed; top: 0; left: 0; right: 0; transform: none; width: 100vw; max-width: 100vw; box-sizing: border-box; pointer-events: auto; background: var(--jp-layout-color1, #fff); color: var(--jp-ui-font-color1, #111); font-family: var(--jp-ui-font-family, sans-serif); border: 1px solid var(--jp-border-color1, #bdbdbd); border-top: 0; border-radius: 0 0 10px 10px; padding: 34px 10px 10px; display: flex; flex-direction: column; align-items: center; gap: 6px; box-shadow: var(--jp-elevation-z2, 0 2px 8px #0002); }',
       '#basedpl-input-host .bpl_keyrow { display: flex; justify-content: center; align-items: stretch; gap: 5px; width: 100%; box-sizing: border-box; }',
       '#basedpl-input-host .bpl_key { flex: 1 1 0; min-width: 0; width: auto; height: 52px; padding: 3px; border: 1px solid var(--jp-border-color2, #c8c8c8); border-radius: 7px; background: var(--jp-layout-color2, #f5f5f5); color: var(--jp-ui-font-color1, #111); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; box-sizing: border-box; user-select: none; font-family: var(--jp-ui-font-family, sans-serif); }',
       '#basedpl-input-host .bpl_key:hover { background: var(--jp-layout-color3, #e5e5e5); border-color: var(--jp-brand-color1, #2196f3); }',
@@ -476,7 +489,10 @@ const kernel: JupyterFrontEndPlugin<void> = {
     ].join('\n');
     document.head.appendChild(style);
     reflow();
+    requestAnimationFrame(() => reflow());
+    requestAnimationFrame(() => requestAnimationFrame(() => reflow()));
     window.addEventListener('resize', reflow);
+    app.shell.layoutModified.connect(() => reflow());
   }
 };
 
