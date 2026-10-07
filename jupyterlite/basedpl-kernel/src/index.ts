@@ -237,6 +237,8 @@ const kernel: JupyterFrontEndPlugin<void> = {
     let collapsed = false;
     let hidden = false;
     let mode: 'bar' | 'keyboard' = 'keyboard';
+    const topPanel = document.getElementById('jp-top-panel') as HTMLElement | null;
+    let topPanelPadding = '';
     const keyboardView = document.createElement('div');
     keyboardView.className = 'bpl_keyboard_view';
     const barView = document.createElement('div');
@@ -354,8 +356,21 @@ const kernel: JupyterFrontEndPlugin<void> = {
       bar.classList.toggle('bpl_collapsed', collapsed);
       bar.hidden = hidden;
       restore.hidden = !hidden;
-      document.body.style.paddingTop = hidden ? '' : bar.offsetHeight + 'px';
+
+      // The compact Bar lives above JupyterLab's main menu instead of covering it.
+      // The full Mac keyboard remains the existing overlay/push-down presentation.
+      if (topPanel) {
+        topPanelPadding = !hidden && mode === 'bar' ? bar.offsetHeight + 'px' : '';
+        topPanel.style.paddingTop = topPanelPadding;
+      }
+      document.body.style.paddingTop = hidden || mode === 'bar' ? '' : bar.offsetHeight + 'px';
       setMode(mode);
+      if (topPanel && !hidden && mode === 'bar') {
+        requestAnimationFrame(() => {
+          topPanelPadding = bar.offsetHeight + 'px';
+          topPanel.style.paddingTop = topPanelPadding;
+        });
+      }
     };
     const cancel = () => { active = undefined; };
 
