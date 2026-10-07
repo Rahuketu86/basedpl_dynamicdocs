@@ -221,6 +221,7 @@ const kernel: JupyterFrontEndPlugin<void> = {
     inputWidget.id = 'basedpl-input-widget';
     inputWidget.addClass('bpl-header-widget');
     app.shell.add(inputWidget, 'header', { rank: 501 });
+    const headerPanel = document.getElementById('jp-header-panel') as HTMLElement | null;
 
     let hidden = false;
     let mode: 'bar' | 'keyboard' = 'keyboard';
@@ -342,10 +343,17 @@ const kernel: JupyterFrontEndPlugin<void> = {
       setMode(mode);
       if (hidden) {
         inputWidget.hide();
+        if (headerPanel) headerPanel.style.minHeight = '0px';
         return;
       }
       inputWidget.show();
       inputWidget.node.style.width = '100%';
+      // JupyterLab historically gives the shell header a zero-height default.
+      // Give that official header area the exact height of our widget so it
+      // participates in normal shell layout rather than overlapping the menu.
+      if (headerPanel) {
+        headerPanel.style.minHeight = Math.max(1, bar.offsetHeight) + 'px';
+      }
     };
 
     const cancel = () => { active = undefined; };
