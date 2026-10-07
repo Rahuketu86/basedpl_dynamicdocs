@@ -204,63 +204,48 @@ const kernel: JupyterFrontEndPlugin<void> = {
     document.body.appendChild(host);
 
     let collapsed = false;
-    // Mac/US physical keyboard layout. Each key shows the glyph produced by Option+key.
-    const keyboardRows = [
-      ['`','1','2','3','4','5','6','7','8','9','0','-','='],
-      ['q','w','e','r','t','y','u','i','o','p','[',']','\\\\'],
-      ['a','s','d','f','g','h','j','k','l',';',"'"],
-      ['z','x','c','v','b','n','m',',','.','/']
+    // Mac/US physical keyboard layout. A key can expose several glyphs,
+    // just like the WebREPL keyboard: these are the outputs available from
+    // the same physical key via Shift/Option/follow-up combinations.
+    const keyboardRows: Array<Array<[string, string[]]>> = [
+      [['`', ['⋄']], ['1', ['¨']], ['2', ['2']], ['3', ['√']], ['4', ['⇄']], ['5', ['_']], ['6', ['^']], ['7', ['∆']], ['8', ['∞']], ['9', ['∨']], ['0', ['⍬', '∧']], ['-', ['¯']], ['=', ['+', '≠', '≡']]],
+      [['q', ['⎕']], ['w', ['⍵']], ['e', ['∊']], ['r', ['⍴']], ['t', ['∘']], ['y', ['•']], ['u', ['÷']], ['i', ['⍳']], ['o', ['○']], ['p', ['π']], ['[', ['[']], [']', [']']], ['\\', ['⌽']]],
+      [['a', ['⍺']], ['s', ['⌈']], ['d', ['⌊']], ['f', ['∂']], ['g', ['∇']], ['h', ['←']], ['j', ['↓']], ['k', ['↑']], ['l', ['→']], [';', ['⊣']], ["'", ['⊢']]],
+      [['z', ['⊂']], ['x', ['⊃']], ['c', ['∩']], ['v', ['∪']], ['b', ['⊥']], ['n', ['⊤']], ['m', ['×']], [',', ['≤', '↢']], ['.', ['≥', '↣']], ['/', ['¿']]]
     ];
-    const glyphForKey = (key: string): string | null => {
-      const action: any = macLayout.option?.[key];
-      if (typeof action === 'string') return action;
-      return action?.state ? (macLayout.states?.[action.state]?.terminator ?? null) : null;
-    };
+
     for (const row of keyboardRows) {
       const rowEl = document.createElement('div');
       rowEl.className = 'bpl_keyrow';
-      for (const key of row) {
-        const glyph = glyphForKey(key);
+      for (const [key, glyphs] of row) {
         const b = document.createElement('button');
         b.type = 'button';
         b.className = 'bpl_key';
-        b.dataset.glyph = glyph ?? '';
-        b.title = glyph ? `Option+${key} → ${glyph}` : `Option+${key}`;
-        b.innerHTML = `<span class="bpl_glyph">${glyph ?? ''}</span><span class="bpl_keylabel">${key}</span>`;
-        if (!glyph) b.classList.add('unmapped');
+        b.title = glyphs.length > 1
+          ? key + ' → ' + glyphs.join('  ')
+          : 'Option+' + key + ' → ' + glyphs[0];
+
+        const glyphsEl = document.createElement('span');
+        glyphsEl.className = 'bpl_glyphs';
+        glyphs.forEach((glyph, index) => {
+          const target = document.createElement('span');
+          target.className = 'bpl_glyph_target' + (index === 0 ? ' primary' : '');
+          target.dataset.glyph = glyph;
+          target.textContent = glyph;
+          target.title = glyph;
+          glyphsEl.appendChild(target);
+        });
+
+        const label = document.createElement('span');
+        label.className = 'bpl_keylabel';
+        label.textContent = key;
+
+        b.dataset.glyph = glyphs.length === 1 ? glyphs[0] : '';
+        b.append(glyphsEl, label);
         rowEl.appendChild(b);
       }
       bar.appendChild(rowEl);
     }
-    // Compact symbol strip, inspired by the WebREPL keyboard. The physical
-    // Mac layout remains primary, while this exposes ordinary APL/ASCII
-    // primitives that do not have an Option-generated keycap, such as +.
-    const symbolSet = new Set<string>();
-    const collectSymbols = (value: any) => {
-      if (typeof value === 'string') {
-        for (const glyph of Array.from(value)) symbolSet.add(glyph);
-      } else if (value && typeof value === 'object') {
-        for (const child of Object.values(value)) collectSymbols(child);
-      }
-    };
-    collectSymbols(macLayout.option);
-    collectSymbols(macLayout.states);
-    for (const glyph of Array.from('+-*/=<>!,~|%&^:;?()[]{}')) symbolSet.add(glyph);
-
-    const symbols = document.createElement('div');
-    symbols.className = 'bpl_symbolstrip';
-    symbols.setAttribute('aria-label', 'APL and ASCII symbols');
-    for (const glyph of symbolSet) {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'bpl_symbol';
-      b.dataset.glyph = glyph;
-      b.title = glyphNames[glyph] ? glyph + ' — ' + glyphNames[glyph] : glyph;
-      b.textContent = glyph;
-      symbols.appendChild(b);
-    }
-    bar.appendChild(symbols);
-
     const reflow = () => {
       toggle.textContent = collapsed ? '＋' : '−';
       toggle.title = collapsed ? 'Expand Mac keyboard' : 'Collapse Mac keyboard';
@@ -277,8 +262,10 @@ const kernel: JupyterFrontEndPlugin<void> = {
       if (b === toggle) {
         collapsed = !collapsed;
         reflow();
-      } else if (b.dataset.glyph && remembered) {
-        remembered.insert(b.dataset.glyph);
+      } else {
+        const glyphTarget = (ev.target as HTMLElement).closest('.bpl_glyph_target') as HTMLElement | null;
+        const glyph = glyphTarget?.dataset.glyph ?? b.dataset.glyph;
+        if (glyph && remembered) remembered.insert(glyph);
       }
     });
 
@@ -337,19 +324,19 @@ const kernel: JupyterFrontEndPlugin<void> = {
       '#basedpl-input-host .ngn_lb.bpl_collapsed { padding: 3px; min-height: 38px; border-radius: 0 0 10px 10px; }',
       '#basedpl-input-host .bpl_collapsed .bpl_keyrow { display: none; }',
       '#basedpl-input-host .bpl_keyrow { display: flex; justify-content: center; align-items: center; gap: 5px; width: max-content; }',
-      '#basedpl-input-host .bpl_symbolstrip { display: flex; align-items: center; gap: 4px; width: min(100%, 1180px); max-width: calc(100vw - 44px); overflow-x: auto; overflow-y: hidden; padding: 3px 2px 2px; scrollbar-width: thin; -webkit-overflow-scrolling: touch; }',
-      '#basedpl-input-host .bpl_symbol { flex: 0 0 42px; width: 42px; height: 36px; border: 1px solid var(--jp-border-color2, #c8c8c8); border-radius: 6px; background: var(--jp-layout-color2, #f5f5f5); color: var(--jp-ui-font-color1, #111); cursor: pointer; font-family: var(--jp-content-font-family, sans-serif); font-size: 21px; line-height: 1; display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; }',
-      '#basedpl-input-host .bpl_symbol:hover { background: var(--jp-layout-color3, #e5e5e5); border-color: var(--jp-brand-color1, #2196f3); }',
-      '#basedpl-input-host .bpl_symbol:active { background: var(--jp-brand-color2, #1976d2); color: var(--jp-inverse-layout-color1, #fff); }',
       '#basedpl-input-host .bpl_key { flex: 0 0 68px; width: 68px; height: 52px; padding: 3px; border: 1px solid var(--jp-border-color2, #c8c8c8); border-radius: 7px; background: var(--jp-layout-color2, #f5f5f5); color: var(--jp-ui-font-color1, #111); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; box-sizing: border-box; user-select: none; font-family: var(--jp-ui-font-family, sans-serif); }',
       '#basedpl-input-host .bpl_key:hover { background: var(--jp-layout-color3, #e5e5e5); border-color: var(--jp-brand-color1, #2196f3); }',
       '#basedpl-input-host .bpl_key:active { background: var(--jp-brand-color2, #1976d2); color: var(--jp-inverse-layout-color1, #fff); }',
       '#basedpl-input-host .bpl_key.unmapped { opacity: .3; }',
-      '#basedpl-input-host .bpl_glyph { display: block; width: 100%; font-family: var(--jp-content-font-family, sans-serif); font-size: 30px; line-height: 31px; min-height: 31px; text-align: center; }',
+      '#basedpl-input-host .bpl_glyphs { display: flex; align-items: center; justify-content: center; gap: 5px; width: 100%; min-height: 31px; font-family: var(--jp-content-font-family, sans-serif); font-size: 26px; line-height: 29px; white-space: nowrap; }',
+      '#basedpl-input-host .bpl_glyph_target { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; padding: 0 2px; border-radius: 4px; cursor: pointer; }',
+      '#basedpl-input-host .bpl_glyph_target.primary { font-size: 30px; font-weight: 500; }',
+      '#basedpl-input-host .bpl_glyph_target:not(.primary) { font-size: 22px; opacity: .82; }',
+      '#basedpl-input-host .bpl_glyph_target:hover { background: var(--jp-layout-color3, #e5e5e5); color: var(--jp-brand-color1, #1976d2); }',
       '#basedpl-input-host .bpl_keylabel { display: block; width: 100%; font-size: 11px; line-height: 13px; opacity: .65; text-align: center; }',
       '#basedpl-input-host .ngn_o { position: absolute; top: 4px; left: 50%; transform: translateX(-50%); width: 34px; height: 27px; border: 1px solid var(--jp-border-color2, #c8c8c8); border-radius: 7px; background: var(--jp-layout-color2, #f5f5f5); color: var(--jp-ui-font-color1, #111); cursor: pointer; font-size: 21px; line-height: 22px; padding: 0; z-index: 3; box-shadow: 0 1px 2px #0002; }',
       '#basedpl-input-host .ngn_o:hover { background: var(--jp-layout-color3, #e5e5e5); border-color: var(--jp-brand-color1, #2196f3); }',
-      '@media(max-width: 1100px) { #basedpl-input-host .bpl_key { flex-basis: 52px; width: 52px; height: 48px; } #basedpl-input-host .bpl_glyph { font-size: 26px; } #basedpl-input-host .bpl_keyrow { gap: 3px; } #basedpl-input-host .ngn_lb { padding-left: 7px; padding-right: 7px; } #basedpl-input-host .bpl_symbolstrip { max-width: calc(100vw - 24px); } }'
+      '@media(max-width: 1100px) { #basedpl-input-host .bpl_key { flex-basis: 52px; width: 52px; height: 48px; } #basedpl-input-host .bpl_glyphs { font-size: 23px; gap: 2px; } #basedpl-input-host .bpl_glyph_target.primary { font-size: 26px; } #basedpl-input-host .bpl_glyph_target:not(.primary) { font-size: 19px; } #basedpl-input-host .bpl_keyrow { gap: 3px; } #basedpl-input-host .ngn_lb { padding-left: 7px; padding-right: 7px; } }'
     ].join('\n');
     document.head.appendChild(style);
   }
