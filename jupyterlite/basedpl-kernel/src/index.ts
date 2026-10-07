@@ -204,44 +204,64 @@ const kernel: JupyterFrontEndPlugin<void> = {
     document.body.appendChild(host);
 
     let collapsed = false;
-    // Mac/US physical keyboard layout. A key can expose several glyphs,
-    // just like the WebREPL keyboard: these are the outputs available from
-    // the same physical key via Shift/Option/follow-up combinations.
-    const keyboardRows: Array<Array<[string, string[]]>> = [
-      [['`', ['⋄']], ['1', ['¨']], ['2', ['2']], ['3', ['√']], ['4', ['⇄']], ['5', ['_']], ['6', ['^']], ['7', ['∆']], ['8', ['∞']], ['9', ['∨']], ['0', ['⍬', '∧']], ['-', ['¯']], ['=', ['+', '≠', '≡']]],
-      [['q', ['⎕']], ['w', ['⍵']], ['e', ['∊']], ['r', ['⍴']], ['t', ['∘']], ['y', ['•']], ['u', ['÷']], ['i', ['⍳']], ['o', ['○']], ['p', ['π']], ['[', ['[']], [']', [']']], ['\\', ['⌽']]],
-      [['a', ['⍺']], ['s', ['⌈']], ['d', ['⌊']], ['f', ['∂']], ['g', ['∇']], ['h', ['←']], ['j', ['↓']], ['k', ['↑']], ['l', ['→']], [';', ['⊣']], ["'", ['⊢']]],
-      [['z', ['⊂']], ['x', ['⊃']], ['c', ['∩']], ['v', ['∪']], ['b', ['⊥']], ['n', ['⊤']], ['m', ['×']], [',', ['≤', '↢']], ['.', ['≥', '↣']], ['/', ['¿']]]
-    ];
+    // Full Mac keyboard presentation, matching the WebREPL keyboard. The
+    // layout includes ordinary physical keys plus every glyph directly
+    // represented on those keycaps. Multi-glyph keys expose each glyph as an
+    // independent click target (for example = -> + ≠ ≡).
+    const keyboardRows = macLayout.keyboard as Array<Array<[string, string, string]>>;
+    const keyboardGlyphs = new Set<string>(Array.from('+-*/=<>!,~|%&^:;?'));
+    const collectGlyphs = (value: any) => {
+      if (typeof value === 'string') {
+        for (const ch of Array.from(value)) keyboardGlyphs.add(ch);
+      } else if (value && typeof value === 'object') {
+        for (const child of Object.values(value)) collectGlyphs(child);
+      }
+    };
+    collectGlyphs(macLayout.option);
+    collectGlyphs(macLayout.states);
+
+    const specialKeys = new Set([
+      'tab', 'caps', 'shift', 'shift2', 'enter', 'delete',
+      'ctrl', 'ctrl2', 'cmd', 'cmd2', 'opt', 'opt2', 'space'
+    ]);
 
     for (const row of keyboardRows) {
       const rowEl = document.createElement('div');
       rowEl.className = 'bpl_keyrow';
-      for (const [key, glyphs] of row) {
+      for (const [key, label] of row) {
         const b = document.createElement('button');
         b.type = 'button';
         b.className = 'bpl_key';
-        b.title = glyphs.length > 1
-          ? key + ' → ' + glyphs.join('  ')
-          : 'Option+' + key + ' → ' + glyphs[0];
+        if (specialKeys.has(key)) b.classList.add('wide');
+        if (key === 'space') b.classList.add('space');
+        b.dataset.key = key;
+        b.title = label;
 
-        const glyphsEl = document.createElement('span');
-        glyphsEl.className = 'bpl_glyphs';
-        glyphs.forEach((glyph, index) => {
+        const glyphTargets = Array.from(label).filter(ch => keyboardGlyphs.has(ch));
+        const glyphEl = document.createElement('span');
+        glyphEl.className = 'bpl_glyphs';
+
+        for (const glyph of Array.from(label)) {
+          if (!keyboardGlyphs.has(glyph)) {
+            const text = document.createElement('span');
+            text.textContent = glyph;
+            glyphEl.appendChild(text);
+            continue;
+          }
           const target = document.createElement('span');
-          target.className = 'bpl_glyph_target' + (index === 0 ? ' primary' : '');
+          target.className = 'bpl_glyph_target' + (glyphTargets.length === 1 ? ' primary' : '');
           target.dataset.glyph = glyph;
           target.textContent = glyph;
           target.title = glyph;
-          glyphsEl.appendChild(target);
-        });
+          glyphEl.appendChild(target);
+        }
 
-        const label = document.createElement('span');
-        label.className = 'bpl_keylabel';
-        label.textContent = key;
+        const labelEl = document.createElement('span');
+        labelEl.className = 'bpl_keylabel';
+        labelEl.textContent = specialKeys.has(key) ? key.toUpperCase() : key;
 
-        b.dataset.glyph = glyphs.length === 1 ? glyphs[0] : '';
-        b.append(glyphsEl, label);
+        b.append(glyphEl, labelEl);
+        if (glyphTargets.length === 1) b.dataset.glyph = glyphTargets[0];
         rowEl.appendChild(b);
       }
       bar.appendChild(rowEl);
@@ -320,23 +340,25 @@ const kernel: JupyterFrontEndPlugin<void> = {
     const style = document.createElement('style');
     style.textContent = [
       '#basedpl-input-host { position: fixed; inset: 0; z-index: 2147483647; pointer-events: none; }',
-      '#basedpl-input-host .ngn_lb { position: fixed; top: 0; left: 50%; right: auto; transform: translateX(-50%); width: max-content; max-width: calc(100vw - 16px); box-sizing: border-box; pointer-events: auto; background: var(--jp-layout-color1, #fff); color: var(--jp-ui-font-color1, #111); font-family: var(--jp-ui-font-family, sans-serif); border: 1px solid var(--jp-border-color1, #bdbdbd); border-top: 0; border-radius: 0 0 12px 12px; padding: 34px 14px 10px; display: flex; flex-direction: column; align-items: center; gap: 6px; box-shadow: var(--jp-elevation-z2, 0 2px 8px #0002); }',
+      '#basedpl-input-host .ngn_lb { position: fixed; top: 0; left: 50%; right: auto; transform: translateX(-50%); width: min(calc(100vw - 16px), 2000px); max-width: calc(100vw - 16px); box-sizing: border-box; pointer-events: auto; background: var(--jp-layout-color1, #fff); color: var(--jp-ui-font-color1, #111); font-family: var(--jp-ui-font-family, sans-serif); border: 1px solid var(--jp-border-color1, #bdbdbd); border-top: 0; border-radius: 0 0 12px 12px; padding: 34px 14px 10px; display: flex; flex-direction: column; align-items: center; gap: 6px; box-shadow: var(--jp-elevation-z2, 0 2px 8px #0002); }',
       '#basedpl-input-host .ngn_lb.bpl_collapsed { padding: 3px; min-height: 38px; border-radius: 0 0 10px 10px; }',
       '#basedpl-input-host .bpl_collapsed .bpl_keyrow { display: none; }',
-      '#basedpl-input-host .bpl_keyrow { display: flex; justify-content: center; align-items: center; gap: 5px; width: max-content; }',
-      '#basedpl-input-host .bpl_key { flex: 0 0 68px; width: 68px; height: 52px; padding: 3px; border: 1px solid var(--jp-border-color2, #c8c8c8); border-radius: 7px; background: var(--jp-layout-color2, #f5f5f5); color: var(--jp-ui-font-color1, #111); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; box-sizing: border-box; user-select: none; font-family: var(--jp-ui-font-family, sans-serif); }',
+      '#basedpl-input-host .bpl_keyrow { display: flex; justify-content: center; align-items: stretch; gap: 5px; width: 100%; }',
+      '#basedpl-input-host .bpl_key { flex: 1 1 0; min-width: 0; width: auto; height: 52px; padding: 3px; border: 1px solid var(--jp-border-color2, #c8c8c8); border-radius: 7px; background: var(--jp-layout-color2, #f5f5f5); color: var(--jp-ui-font-color1, #111); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; box-sizing: border-box; user-select: none; font-family: var(--jp-ui-font-family, sans-serif); }',
       '#basedpl-input-host .bpl_key:hover { background: var(--jp-layout-color3, #e5e5e5); border-color: var(--jp-brand-color1, #2196f3); }',
       '#basedpl-input-host .bpl_key:active { background: var(--jp-brand-color2, #1976d2); color: var(--jp-inverse-layout-color1, #fff); }',
       '#basedpl-input-host .bpl_key.unmapped { opacity: .3; }',
       '#basedpl-input-host .bpl_glyphs { display: flex; align-items: center; justify-content: center; gap: 5px; width: 100%; min-height: 31px; font-family: var(--jp-content-font-family, sans-serif); font-size: 26px; line-height: 29px; white-space: nowrap; }',
-      '#basedpl-input-host .bpl_glyph_target { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; padding: 0 2px; border-radius: 4px; cursor: pointer; }',
+      '#basedpl-input-host .bpl_key.wide { flex-grow: 1.45; }',
+      '#basedpl-input-host .bpl_key.space { flex-grow: 5; }',
+      '#basedpl-input-host .bpl_glyph_target { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; padding: 0 3px; border-radius: 4px; cursor: pointer; }',
       '#basedpl-input-host .bpl_glyph_target.primary { font-size: 30px; font-weight: 500; }',
       '#basedpl-input-host .bpl_glyph_target:not(.primary) { font-size: 22px; opacity: .82; }',
       '#basedpl-input-host .bpl_glyph_target:hover { background: var(--jp-layout-color3, #e5e5e5); color: var(--jp-brand-color1, #1976d2); }',
-      '#basedpl-input-host .bpl_keylabel { display: block; width: 100%; font-size: 11px; line-height: 13px; opacity: .65; text-align: center; }',
+      '#basedpl-input-host .bpl_keylabel { display: block; width: 100%; font-size: 11px; line-height: 13px; opacity: .65; text-align: center; text-transform: uppercase; }',
       '#basedpl-input-host .ngn_o { position: absolute; top: 4px; left: 50%; transform: translateX(-50%); width: 34px; height: 27px; border: 1px solid var(--jp-border-color2, #c8c8c8); border-radius: 7px; background: var(--jp-layout-color2, #f5f5f5); color: var(--jp-ui-font-color1, #111); cursor: pointer; font-size: 21px; line-height: 22px; padding: 0; z-index: 3; box-shadow: 0 1px 2px #0002; }',
       '#basedpl-input-host .ngn_o:hover { background: var(--jp-layout-color3, #e5e5e5); border-color: var(--jp-brand-color1, #2196f3); }',
-      '@media(max-width: 1100px) { #basedpl-input-host .bpl_key { flex-basis: 52px; width: 52px; height: 48px; } #basedpl-input-host .bpl_glyphs { font-size: 23px; gap: 2px; } #basedpl-input-host .bpl_glyph_target.primary { font-size: 26px; } #basedpl-input-host .bpl_glyph_target:not(.primary) { font-size: 19px; } #basedpl-input-host .bpl_keyrow { gap: 3px; } #basedpl-input-host .ngn_lb { padding-left: 7px; padding-right: 7px; } }'
+      '@media(max-width: 1100px) { #basedpl-input-host .bpl_key { flex-basis: 0; width: auto; height: 48px; } #basedpl-input-host .bpl_glyphs { font-size: 23px; gap: 2px; } #basedpl-input-host .bpl_glyph_target.primary { font-size: 26px; } #basedpl-input-host .bpl_glyph_target:not(.primary) { font-size: 19px; } #basedpl-input-host .bpl_keyrow { gap: 3px; } #basedpl-input-host .ngn_lb { padding-left: 7px; padding-right: 7px; } }'
     ].join('\n');
     document.head.appendChild(style);
   }
