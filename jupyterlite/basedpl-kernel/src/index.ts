@@ -64,8 +64,13 @@ const kernel: JupyterFrontEndPlugin<void> = {
         empty: from === to,
         rect: () => ({ left: ed.host.getBoundingClientRect().left, bottom: ed.host.getBoundingClientRect().bottom }),
         insert: (text: string) => {
-          const position = ed.getPositionAt(from);
-          ed.setCursorPosition(position);
+          const start = ed.getPositionAt(from);
+          const end = ed.getPositionAt(to);
+          // Restore focus before touching the editor selection.  JupyterLab's
+          // CodeMirror adapter can otherwise ignore selection changes made while
+          // the floating keyboard owns focus.
+          ed.focus();
+          ed.setSelection(start, end);
           ed.replaceSelection(text);
           ed.focus();
         }
@@ -229,7 +234,7 @@ const kernel: JupyterFrontEndPlugin<void> = {
 
     bar.addEventListener('mousedown', ev => {
       ev.preventDefault();
-      const remembered = last.editor ?? snapshotEditor();
+      const remembered = snapshotEditor() ?? last.editor;
       const b = (ev.target as HTMLElement).closest('button') as HTMLButtonElement | null;
       if (!b) return;
       if (b === close) {
