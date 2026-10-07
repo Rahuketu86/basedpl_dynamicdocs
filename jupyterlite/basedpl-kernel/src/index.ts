@@ -47,6 +47,30 @@ const kernel: JupyterFrontEndPlugin<void> = {
       insert: (text: string, from?: number) => void;
     };
     const last = { editor: null as EditorAdapter | null };
+    const snapshotEditor = (): EditorAdapter | null => {
+      const cell: any = notebookTracker.activeCell;
+      const ed: any = cell?.editor;
+      if (!ed || ed.readOnly) return last.editor;
+      const cursor = ed.getCursorPosition?.();
+      if (!cursor) return last.editor;
+      const selection = ed.getSelection?.();
+      const pos = ed.getOffsetAt(cursor);
+      const from = selection ? ed.getOffsetAt(selection.start) : pos;
+      const to = selection ? ed.getOffsetAt(selection.end) : pos;
+      return {
+        id: ed,
+        text: ed.model.sharedModel.getSource(),
+        pos,
+        empty: from === to,
+        rect: () => ({ left: ed.host.getBoundingClientRect().left, bottom: ed.host.getBoundingClientRect().bottom }),
+        insert: (text: string) => {
+          const position = ed.getPositionAt(from);
+          ed.setCursorPosition(position);
+          ed.replaceSelection(text);
+          ed.focus();
+        }
+      };
+    };
     let active: { id: any; start: number } | undefined;
     let choice: { editor: EditorAdapter; start: number; found: GlyphChoice[] } | undefined;
     let leftAlt = false, rightAlt = false, keyInput = false, pending: string | null = null;
@@ -205,7 +229,7 @@ const kernel: JupyterFrontEndPlugin<void> = {
 
     bar.addEventListener('mousedown', ev => {
       ev.preventDefault();
-      const remembered = last.editor;
+      const remembered = last.editor ?? snapshotEditor();
       const b = (ev.target as HTMLElement).closest('button') as HTMLButtonElement | null;
       if (!b) return;
       if (b === close) {
@@ -215,7 +239,7 @@ const kernel: JupyterFrontEndPlugin<void> = {
         collapsed = !collapsed;
         reflow();
       } else if (b.dataset.glyph && remembered) {
-        remembered.insert(b.dataset.glyph, remembered.pos);
+        remembered.insert(b.dataset.glyph);
       }
     });
 
@@ -223,7 +247,7 @@ const kernel: JupyterFrontEndPlugin<void> = {
     const remember = () => { last.editor = editor(); };
     notebookTracker.activeCellChanged.connect(() => { remember(); cancel(); });
     notebookTracker.currentChanged.connect(() => { remember(); cancel(); });
-    document.addEventListener('focusin', () => { const e = editor(); if (e) last.editor = e; }, true);
+    document.addEventListener('focusin', ev => { if (host.contains(ev.target as Node)) return; const e = editor(); if (e) last.editor = e; }, true);
     document.addEventListener('pointerup', ev => { if (!host.contains(ev.target as Node)) remember(); }, true);
     for (const event of ['paste', 'cut', 'compositionstart']) document.addEventListener(event, cancel, true);
     document.addEventListener('input', ev => {
