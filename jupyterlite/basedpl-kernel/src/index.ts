@@ -357,35 +357,34 @@ const kernel: JupyterFrontEndPlugin<void> = {
       bar.hidden = hidden;
       restore.hidden = !hidden;
 
-      // The compact Bar lives above JupyterLab's main menu instead of covering it.
-      // The full Mac keyboard remains the existing overlay/push-down presentation.
+      // Reserve real layout space so the BasedPL UI never sits on top of
+      // JupyterLab's top/menu area. The keyboard uses the whole shell width;
+      // the compact Bar reserves the same space in the top panel.
       if (topPanel) {
         topPanelPadding = !hidden && mode === 'bar' ? bar.offsetHeight + 'px' : '';
         topPanel.style.paddingTop = topPanelPadding;
+        topPanel.style.boxSizing = 'border-box';
       }
-      document.body.style.paddingTop = hidden || mode === 'bar' ? '' : bar.offsetHeight + 'px';
+      document.body.style.paddingTop = !hidden && mode === 'keyboard'
+        ? bar.offsetHeight + 'px'
+        : '';
       setMode(mode);
-      if (topPanel && !hidden && mode === 'bar') {
-        requestAnimationFrame(() => {
-          topPanelPadding = bar.offsetHeight + 'px';
-          topPanel.style.paddingTop = topPanelPadding;
-        });
-      }
     };
     const cancel = () => { active = undefined; };
 
     bar.addEventListener('mousedown', ev => {
-      ev.preventDefault();
-      const remembered = snapshotEditor() ?? last.editor;
       const b = (ev.target as HTMLElement).closest('button') as HTMLButtonElement | null;
       if (!b) return;
+      if (b === hideToggle || b === barMode || b === keyboardMode) return;
+      ev.preventDefault();
+
       if (b === toggle) {
         collapsed = !collapsed;
         reflow();
         return;
       }
-      if (b === hideToggle || b === barMode || b === keyboardMode) return;
 
+      const remembered = snapshotEditor() ?? last.editor;
       const glyphTarget = (ev.target as HTMLElement).closest('.bpl_glyph_target') as HTMLElement | null;
       const glyph = glyphTarget?.dataset.glyph ?? b.dataset.glyph;
       if (glyph && remembered) remembered.insert(glyph);
@@ -400,22 +399,16 @@ const kernel: JupyterFrontEndPlugin<void> = {
       }
     });
 
-    barView.addEventListener('mousedown', ev => {
-      ev.preventDefault();
-      const remembered = snapshotEditor() ?? last.editor;
-      const b = (ev.target as HTMLElement).closest('button') as HTMLButtonElement | null;
-      if (b?.dataset.glyph && remembered) remembered.insert(b.dataset.glyph);
-    });
-
-    hideToggle.addEventListener('click', ev => {
+    hideToggle.addEventListener('pointerdown', ev => {
       ev.preventDefault();
       ev.stopPropagation();
       hidden = true;
       reflow();
     });
 
-    restore.addEventListener('click', ev => {
+    restore.addEventListener('pointerdown', ev => {
       ev.preventDefault();
+      ev.stopPropagation();
       hidden = false;
       reflow();
     });
@@ -466,8 +459,6 @@ const kernel: JupyterFrontEndPlugin<void> = {
       keyInput = plain && (ev.key.length === 1 || ev.key === 'Backspace');
     }, true);
 
-    reflow();
-
     const style = document.createElement('style');
     style.textContent = [
       '#basedpl-input-host { position: fixed; inset: 0; z-index: 2147483647; pointer-events: none; }',
@@ -489,8 +480,8 @@ const kernel: JupyterFrontEndPlugin<void> = {
       '#basedpl-input-host .bpl_keylabel { display: block; width: 100%; font-size: 11px; line-height: 13px; opacity: .65; text-align: center; text-transform: uppercase; }',
       '#basedpl-input-host .ngn_o { position: absolute; top: 4px; left: 10px; width: 34px; height: 27px; border: 1px solid var(--jp-border-color2, #c8c8c8); border-radius: 7px; background: var(--jp-layout-color2, #f5f5f5); color: var(--jp-ui-font-color1, #111); cursor: pointer; font-size: 21px; line-height: 22px; padding: 0; z-index: 3; box-shadow: 0 1px 2px #0002; }',
       '#basedpl-input-host .ngn_o:hover { background: var(--jp-layout-color3, #e5e5e5); border-color: var(--jp-brand-color1, #2196f3); }',
-      '#basedpl-input-host .bpl_mode { display:flex; align-items:center; gap:0; position:absolute; top:4px; left:50%; transform:translateX(-50%); z-index:3; border:1px solid var(--jp-border-color2,#c8c8c8); border-radius:7px; overflow:hidden; background:var(--jp-layout-color2,#f5f5f5); }',
-      '#basedpl-input-host .bpl_mode_button { border:0; border-right:1px solid var(--jp-border-color2,#c8c8c8); background:transparent; color:var(--jp-ui-font-color1,#111); padding:4px 10px; height:27px; font-size:11px; cursor:pointer; }',
+      '#basedpl-input-host .bpl_mode { display:flex !important; align-items:center; gap:0; position:absolute; top:4px; left:50%; transform:translateX(-50%); z-index:3; border:1px solid var(--jp-border-color2,#c8c8c8); border-radius:7px; overflow:hidden; background:var(--jp-layout-color2,#f5f5f5); }',
+      '#basedpl-input-host .bpl_mode_button { display:block; pointer-events:auto; border:0; border-right:1px solid var(--jp-border-color2,#c8c8c8); background:transparent; color:var(--jp-ui-font-color1,#111); padding:4px 10px; height:27px; font-size:11px; cursor:pointer; }',
       '#basedpl-input-host .bpl_mode_button:last-child { border-right:0; }',
       '#basedpl-input-host .bpl_mode_button.active { background:var(--jp-brand-color1,#2196f3); color:var(--jp-inverse-layout-color1,#fff); }',
       '#basedpl-input-host .ngn_hide { position: absolute; top: 4px; right: 8px; height: 27px; padding: 0 9px; border: 1px solid var(--jp-border-color2, #c8c8c8); border-radius: 7px; background: var(--jp-layout-color2, #f5f5f5); color: var(--jp-ui-font-color1, #111); cursor: pointer; font-size: 12px; line-height: 25px; z-index: 3; box-shadow: 0 1px 2px #0002; pointer-events:auto; }',
@@ -504,6 +495,8 @@ const kernel: JupyterFrontEndPlugin<void> = {
       '@media(max-width: 1100px) { #basedpl-input-host .bpl_key { flex-basis: 0; width: auto; height: 48px; } #basedpl-input-host .bpl_glyphs { font-size: 23px; gap: 2px; } #basedpl-input-host .bpl_glyph_target.primary { font-size: 26px; } #basedpl-input-host .bpl_glyph_target:not(.primary) { font-size: 19px; } #basedpl-input-host .bpl_keyrow { gap: 3px; } #basedpl-input-host .ngn_lb { padding-left: 7px; padding-right: 7px; } }'
     ].join('\n');
     document.head.appendChild(style);
+    reflow();
+    window.addEventListener('resize', reflow);
   }
 };
 
