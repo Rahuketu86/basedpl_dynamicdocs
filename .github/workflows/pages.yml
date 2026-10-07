@@ -182,7 +182,9 @@ jobs:
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
       - name: Run deployed browser E2E
-        run: node tests/e2e/repl.mjs
+        run: |
+          node tests/e2e/repl.mjs
+          node tests/e2e/jupyterlite-glyph.mjs
 
   deploy:
     environment:
