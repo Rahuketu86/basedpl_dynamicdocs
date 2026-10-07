@@ -357,17 +357,20 @@ const kernel: JupyterFrontEndPlugin<void> = {
       bar.hidden = hidden;
       restore.hidden = !hidden;
 
-      // Reserve real layout space so the BasedPL UI never sits on top of
-      // JupyterLab's top/menu area. The keyboard uses the whole shell width;
-      // the compact Bar reserves the same space in the top panel.
+      // JupyterLite's Pages build adds a fixed 44px navigation bar (#bpl-tabs).
+      // Do not cover it. If that bar is absent, use the normal top of the page.
+      const nav = document.getElementById('bpl-tabs');
+      const navBottom = nav?.getBoundingClientRect().bottom ?? 0;
+      bar.style.top = Math.max(0, navBottom) + 'px';
+
+      // Reserve real layout space in JupyterLab's shell so neither the compact
+      // Bar nor the full keyboard sits on top of the Lab top/menu area.
       if (topPanel) {
-        topPanelPadding = !hidden && mode === 'bar' ? bar.offsetHeight + 'px' : '';
+        topPanelPadding = !hidden ? bar.offsetHeight + 'px' : '';
         topPanel.style.paddingTop = topPanelPadding;
         topPanel.style.boxSizing = 'border-box';
       }
-      document.body.style.paddingTop = !hidden && mode === 'keyboard'
-        ? bar.offsetHeight + 'px'
-        : '';
+      document.body.style.paddingTop = '';
       setMode(mode);
     };
     const cancel = () => { active = undefined; };
@@ -478,15 +481,15 @@ const kernel: JupyterFrontEndPlugin<void> = {
       '#basedpl-input-host .bpl_glyph_target:not(.primary) { font-size: 22px; opacity: .82; }',
       '#basedpl-input-host .bpl_glyph_target:hover { background: var(--jp-layout-color3, #e5e5e5); color: var(--jp-brand-color1, #1976d2); }',
       '#basedpl-input-host .bpl_keylabel { display: block; width: 100%; font-size: 11px; line-height: 13px; opacity: .65; text-align: center; text-transform: uppercase; }',
-      '#basedpl-input-host .ngn_o { position: absolute; top: 4px; left: 10px; width: 34px; height: 27px; border: 1px solid var(--jp-border-color2, #c8c8c8); border-radius: 7px; background: var(--jp-layout-color2, #f5f5f5); color: var(--jp-ui-font-color1, #111); cursor: pointer; font-size: 21px; line-height: 22px; padding: 0; z-index: 3; box-shadow: 0 1px 2px #0002; }',
+      '#basedpl-input-host .ngn_o { position: absolute !important; top: 4px !important; left: 10px !important; width: 34px; height: 27px; border: 1px solid var(--jp-border-color2, #c8c8c8); border-radius: 7px; background: var(--jp-layout-color2, #f5f5f5); color: var(--jp-ui-font-color1, #111); cursor: pointer; font-size: 21px; line-height: 22px; padding: 0; z-index: 3; box-shadow: 0 1px 2px #0002; }',
       '#basedpl-input-host .ngn_o:hover { background: var(--jp-layout-color3, #e5e5e5); border-color: var(--jp-brand-color1, #2196f3); }',
-      '#basedpl-input-host .bpl_mode { display:flex !important; align-items:center; gap:0; position:absolute; top:4px; left:50%; transform:translateX(-50%); z-index:3; border:1px solid var(--jp-border-color2,#c8c8c8); border-radius:7px; overflow:hidden; background:var(--jp-layout-color2,#f5f5f5); }',
+      '#basedpl-input-host .bpl_mode { display:flex !important; align-items:center; gap:0; position:absolute !important; top:4px !important; left:50% !important; left:50%; transform:translateX(-50%); z-index:3; border:1px solid var(--jp-border-color2,#c8c8c8); border-radius:7px; overflow:hidden; background:var(--jp-layout-color2,#f5f5f5); }',
       '#basedpl-input-host .bpl_mode_button { display:block; pointer-events:auto; border:0; border-right:1px solid var(--jp-border-color2,#c8c8c8); background:transparent; color:var(--jp-ui-font-color1,#111); padding:4px 10px; height:27px; font-size:11px; cursor:pointer; }',
       '#basedpl-input-host .bpl_mode_button:last-child { border-right:0; }',
       '#basedpl-input-host .bpl_mode_button.active { background:var(--jp-brand-color1,#2196f3); color:var(--jp-inverse-layout-color1,#fff); }',
       '#basedpl-input-host .ngn_hide { position: absolute; top: 4px; right: 8px; height: 27px; padding: 0 9px; border: 1px solid var(--jp-border-color2, #c8c8c8); border-radius: 7px; background: var(--jp-layout-color2, #f5f5f5); color: var(--jp-ui-font-color1, #111); cursor: pointer; font-size: 12px; line-height: 25px; z-index: 3; box-shadow: 0 1px 2px #0002; pointer-events:auto; }',
       '#basedpl-input-host .ngn_hide:hover { background: var(--jp-layout-color3, #e5e5e5); border-color: var(--jp-brand-color1,#1976d2); }',
-      '#basedpl-input-host .bpl_bar_view { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:3px; width:100%; padding:1px 44px 0; box-sizing:border-box; max-height:58px; overflow:auto; }',
+      '#basedpl-input-host .bpl_bar_view { display:flex; align-items:center; justify-content:flex-start; flex-wrap:nowrap; gap:3px; width:100%; padding:1px 44px 0; box-sizing:border-box; height:40px; max-height:40px; overflow-x:auto; overflow-y:hidden; white-space:nowrap; scrollbar-width:thin; }',
       '#basedpl-input-host .bpl_bar_glyph { min-width:34px; height:34px; padding:2px 7px; border:1px solid var(--jp-border-color2,#c8c8c8); border-radius:6px; background:var(--jp-layout-color2,#f5f5f5); color:var(--jp-ui-font-color1,#111); font-family:var(--jp-content-font-family,sans-serif); font-size:22px; cursor:pointer; }',
       '#basedpl-input-host .bpl_bar_glyph:hover { background:var(--jp-layout-color3,#e5e5e5); border-color:var(--jp-brand-color1,#2196f3); }',
       '#basedpl-input-host .bpl_mode_bar { padding-bottom:7px; }',
