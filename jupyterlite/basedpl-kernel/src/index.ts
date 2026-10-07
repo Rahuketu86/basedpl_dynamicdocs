@@ -5,17 +5,20 @@ import {
 import type { IKernel } from '@jupyterlite/services';
 import { IKernelSpecs } from '@jupyterlite/services';
 import { INotebookTracker } from '@jupyterlab/notebook';
+import { IMainMenu } from '@jupyterlab/mainmenu';
+import { Menu, Widget } from '@lumino/widgets';
 import { BasedPLKernel } from './kernel.js';
 import layout from './layout.js';
 
 const kernel: JupyterFrontEndPlugin<void> = {
   id: '@rahuketu86/basedpl-kernel:kernel',
   autoStart: true,
-  requires: [IKernelSpecs, INotebookTracker],
+  requires: [IKernelSpecs, INotebookTracker, IMainMenu],
   activate: (
     app: JupyterFrontEnd,
     kernelspecs: IKernelSpecs,
-    notebookTracker: INotebookTracker
+    notebookTracker: INotebookTracker,
+    mainMenu: IMainMenu
   ) => {
     let activeKernel: BasedPLKernel | null = null;
 
@@ -208,21 +211,19 @@ const kernel: JupyterFrontEndPlugin<void> = {
     hideToggle.textContent = 'Hide';
     hideToggle.title = 'Hide BasedPL input';
 
-    const restore = document.createElement('button');
-    restore.className = 'ngn_restore';
-    restore.type = 'button';
-    restore.textContent = '⌨';
-    restore.title = 'Show BasedPL input';
-    restore.hidden = true;
-
     bar.append(toggle, hideToggle);
-    host.append(bar, restore);
-    document.body.appendChild(host);
+    host.append(bar);
+
+    // Use JupyterLab's official shell extension point instead of a fixed body
+    // overlay. The header area sits above the main menu; its height follows
+    // this widget, so the notebook is reflowed by JupyterLab itself.
+    const inputWidget = new Widget({ node: host });
+    inputWidget.id = 'basedpl-input-widget';
+    inputWidget.addClass('bpl-header-widget');
+    app.shell.add(inputWidget, 'header', { rank: 501 });
 
     let hidden = false;
     let mode: 'bar' | 'keyboard' = 'keyboard';
-    const topPanel = document.getElementById('jp-top-panel') as HTMLElement | null;
-    const mainPanel = document.getElementById('jp-main-content-panel') as HTMLElement | null;
     const keyboardView = document.createElement('div');
     keyboardView.className = 'bpl_keyboard_view';
     const barView = document.createElement('div');
@@ -334,39 +335,19 @@ const kernel: JupyterFrontEndPlugin<void> = {
       toggle.title = mode === 'keyboard'
         ? 'Switch to Bar'
         : 'Switch to Keyboard';
+      inputWidget.node.dataset.mode = mode;
     };
 
     const reflow = () => {
-      // Apply the mode first so offsetHeight is the actual Bar or Keyboard height.
       setMode(mode);
-
-      bar.hidden = hidden;
-      bar.style.display = hidden ? 'none' : 'flex';
-      restore.hidden = !hidden;
-      restore.style.display = hidden ? 'block' : 'none';
-
-      // The Pages build puts a fixed 44px navigation strip outside JupyterLab.
-      // JupyterLab then has its own top panel containing the logo/main menu.
-      // Place BasedPL *after both* so neither top bar can ever be covered.
-      const nav = document.getElementById('bpl-tabs');
-      const navRect = nav?.getBoundingClientRect();
-      const navBottom = navRect?.bottom ?? 44;
-      const topRect = topPanel?.getBoundingClientRect();
-      const labTopBottom = topRect?.bottom ?? navBottom;
-      bar.style.top = Math.max(navBottom, labTopBottom) + 'px';
-
-      // The BasedPL panel is fixed, so reserve exactly its height in the main
-      // JupyterLab content area. This makes the notebook move down instead of
-      // being hidden behind the keyboard.
-      if (mainPanel) {
-        mainPanel.style.paddingTop = hidden ? '' : bar.offsetHeight + 'px';
-        mainPanel.style.boxSizing = 'border-box';
+      if (hidden) {
+        inputWidget.hide();
+        return;
       }
-
-      // Preserve the static Pages navigation strip; do not pad the JupyterLab
-      // top panel itself.
-      document.body.style.paddingTop = '44px';
+      inputWidget.show();
+      inputWidget.node.style.width = '100%';
     };
+
     const cancel = () => { active = undefined; };
 
     bar.addEventListener('mousedown', ev => {
@@ -376,8 +357,8 @@ const kernel: JupyterFrontEndPlugin<void> = {
       ev.preventDefault();
 
       if (b === toggle) {
-        setMode(mode === 'keyboard' ? 'bar' : 'keyboard');
-        reflow();
+        if (mode === 'keyboard') showBar();
+        else showKeyboard();
         return;
       }
 
@@ -387,28 +368,60 @@ const kernel: JupyterFrontEndPlugin<void> = {
       if (glyph && remembered) remembered.insert(glyph);
     });
 
-    const hideInput = (ev: Event) => {
-      ev.preventDefault();
-      ev.stopPropagation();
-      hidden = true;
-      bar.style.display = 'none';
-      bar.hidden = true;
-      restore.hidden = false;
-      restore.style.display = 'block';
-      if (mainPanel) mainPanel.style.paddingTop = '';
-      document.body.style.paddingTop = '44px';
-    };
-    hideToggle.addEventListener('pointerdown', hideInput);
-    hideToggle.addEventListener('click', hideInput);
-
-    const restoreInput = (ev: Event) => {
-      ev.preventDefault();
-      ev.stopPropagation();
+    const showKeyboard = () => {
       hidden = false;
+      setMode('keyboard');
       reflow();
     };
-    restore.addEventListener('pointerdown', restoreInput);
-    restore.addEventListener('click', restoreInput);
+
+    const showBar = () => {
+      hidden = false;
+      setMode('bar');
+      reflow();
+    };
+
+    const hideInput = () => {
+      hidden = true;
+      inputWidget.hide();
+    };
+
+    const hideFromButton = (ev: Event) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      hideInput();
+    };
+    hideToggle.addEventListener('pointerdown', hideFromButton);
+    hideToggle.addEventListener('click', hideFromButton);
+
+    const commandIds = {
+      showKeyboard: 'basedpl:show-keyboard',
+      showBar: 'basedpl:show-bar',
+      hide: 'basedpl:hide'
+    };
+
+    app.commands.addCommand(commandIds.showKeyboard, {
+      label: 'Show Keyboard',
+      isEnabled: () => hidden || mode !== 'keyboard',
+      execute: showKeyboard
+    });
+    app.commands.addCommand(commandIds.showBar, {
+      label: 'Show Bar',
+      isEnabled: () => hidden || mode !== 'bar',
+      execute: showBar
+    });
+    app.commands.addCommand(commandIds.hide, {
+      label: 'Hide',
+      isEnabled: () => !hidden,
+      execute: hideInput
+    });
+
+    const glyphMenu = new Menu({ commands: app.commands });
+    glyphMenu.title.label = 'Glyph';
+    glyphMenu.addItem({ command: commandIds.showKeyboard });
+    glyphMenu.addItem({ command: commandIds.showBar });
+    glyphMenu.addItem({ command: commandIds.hide });
+    mainMenu.addMenu(glyphMenu, true, { rank: 50 });
+
 
 
     const remember = () => { last.editor = editor(); };
@@ -458,8 +471,8 @@ const kernel: JupyterFrontEndPlugin<void> = {
 
     const style = document.createElement('style');
     style.textContent = [
-      '#basedpl-input-host { position: fixed; inset: 0; z-index: 2147483647; pointer-events: none; }',
-      '#basedpl-input-host .ngn_lb { position: fixed; top: 0; left: 0; right: 0; transform: none; width: 100vw; max-width: 100vw; box-sizing: border-box; pointer-events: auto; background: var(--jp-layout-color1, #fff); color: var(--jp-ui-font-color1, #111); font-family: var(--jp-ui-font-family, sans-serif); border: 1px solid var(--jp-border-color1, #bdbdbd); border-top: 0; border-radius: 0 0 10px 10px; padding: 34px 10px 10px; display: flex; flex-direction: column; align-items: center; gap: 6px; box-shadow: var(--jp-elevation-z2, 0 2px 8px #0002); }',
+      '#basedpl-input-host { width: 100%; box-sizing: border-box; pointer-events: none; }',
+      '#basedpl-input-host .ngn_lb { position: relative; width: 100%; box-sizing: border-box; pointer-events: auto; background: var(--jp-layout-color1, #fff); color: var(--jp-ui-font-color1, #111); font-family: var(--jp-ui-font-family, sans-serif); border: 1px solid var(--jp-border-color1, #bdbdbd); border-radius: 0 0 8px 8px; padding: 4px 10px 8px; display: flex; flex-direction: column; align-items: center; gap: 6px; box-shadow: var(--jp-elevation-z1, 0 1px 4px #0002); }',
       '#basedpl-input-host .bpl_keyrow { display: flex; justify-content: center; align-items: stretch; gap: 5px; width: 100%; box-sizing: border-box; }',
       '#basedpl-input-host .bpl_key { flex: 1 1 0; min-width: 0; width: auto; height: 52px; padding: 3px; border: 1px solid var(--jp-border-color2, #c8c8c8); border-radius: 7px; background: var(--jp-layout-color2, #f5f5f5); color: var(--jp-ui-font-color1, #111); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; box-sizing: border-box; user-select: none; font-family: var(--jp-ui-font-family, sans-serif); }',
       '#basedpl-input-host .bpl_key:hover { background: var(--jp-layout-color3, #e5e5e5); border-color: var(--jp-brand-color1, #2196f3); }',
@@ -483,8 +496,6 @@ const kernel: JupyterFrontEndPlugin<void> = {
       '#basedpl-input-host .bpl_keyboard_view[hidden] { display:none !important; }',
       '#basedpl-input-host .bpl_bar_glyph { min-width:34px; height:34px; padding:2px 7px; border:1px solid var(--jp-border-color2,#c8c8c8); border-radius:6px; background:var(--jp-layout-color2,#f5f5f5); color:var(--jp-ui-font-color1,#111); font-family:var(--jp-content-font-family,sans-serif); font-size:22px; cursor:pointer; }',
       '#basedpl-input-host .bpl_bar_glyph:hover { background:var(--jp-layout-color3,#e5e5e5); border-color:var(--jp-brand-color1,#2196f3); }',
-      '#basedpl-input-host .ngn_restore { position: fixed; right: 12px; bottom: 12px; width: 38px; height: 38px; border: 1px solid var(--jp-border-color1, #bdbdbd); border-radius: 10px; background: var(--jp-layout-color1, #fff); color: var(--jp-ui-font-color1, #111); cursor: pointer; font-size: 20px; line-height: 34px; padding: 0; pointer-events: auto; box-shadow: var(--jp-elevation-z2, 0 2px 8px #0002); }',
-      '#basedpl-input-host .ngn_restore:hover { background: var(--jp-layout-color3, #e5e5e5); border-color: var(--jp-brand-color1, #2196f3); }',
       '@media(max-width: 1100px) { #basedpl-input-host .bpl_key { flex-basis: 0; width: auto; height: 48px; } #basedpl-input-host .bpl_glyphs { font-size: 23px; gap: 2px; } #basedpl-input-host .bpl_glyph_target.primary { font-size: 26px; } #basedpl-input-host .bpl_glyph_target:not(.primary) { font-size: 19px; } #basedpl-input-host .bpl_keyrow { gap: 3px; } #basedpl-input-host .ngn_lb { padding-left: 7px; padding-right: 7px; } }'
     ].join('\n');
     document.head.appendChild(style);
@@ -492,10 +503,6 @@ const kernel: JupyterFrontEndPlugin<void> = {
     requestAnimationFrame(() => reflow());
     requestAnimationFrame(() => requestAnimationFrame(() => reflow()));
     window.addEventListener('resize', reflow);
-    const shellWithLayout = app.shell as typeof app.shell & {
-      layoutModified?: { connect: (slot: () => void) => void };
-    };
-    shellWithLayout.layoutModified?.connect(() => reflow());
   }
 };
 
