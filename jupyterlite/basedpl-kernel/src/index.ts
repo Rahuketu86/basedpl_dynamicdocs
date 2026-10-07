@@ -454,7 +454,7 @@ const kernel: JupyterFrontEndPlugin<void> = {
     glyphMenu.addItem({ command: commandIds.showKeyboard });
     glyphMenu.addItem({ command: commandIds.showBar });
     glyphMenu.addItem({ command: commandIds.hide });
-    mainMenu.addMenu(glyphMenu, { rank: 50 });
+    mainMenu.addMenu(glyphMenu, true, { rank: 50 });
 
 
 
