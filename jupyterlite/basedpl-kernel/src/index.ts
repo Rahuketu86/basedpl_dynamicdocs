@@ -492,7 +492,10 @@ const kernel: JupyterFrontEndPlugin<void> = {
     requestAnimationFrame(() => reflow());
     requestAnimationFrame(() => requestAnimationFrame(() => reflow()));
     window.addEventListener('resize', reflow);
-    app.shell.layoutModified.connect(() => reflow());
+    const shellWithLayout = app.shell as typeof app.shell & {
+      layoutModified?: { connect: (slot: () => void) => void };
+    };
+    shellWithLayout.layoutModified?.connect(() => reflow());
   }
 };
 
