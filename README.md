@@ -28,9 +28,17 @@ The interpreter runs in a Web Worker so evaluation does not block the UI thread.
     web/src/lib.rs                  wasm-bindgen API around BasedPL Session
     web/worker.js                   Persistent browser worker
     scripts/prepare_basedpl_wasm.sh Reproducible local BasedPL compatibility patch
-    .github/workflows/pages.yml     Production Pages build
+    jupyterlite/                    JupyterLite kernel + extension (see jupyterlite/README.md)
+    docker/jupyterlite-build.Dockerfile
+                                    Local/remote dev image for fast JupyterLite iteration
+    scripts/build_and_test_jupyterlite.sh
+                                    Build + test the JupyterLite side end-to-end, outside CI
+    .github/workflows/pages.yml     Production Pages build + deploy (build+deploy only; no E2E)
+    .github/workflows/e2e.yml       Manual-only browser E2E against the deployed site
     .github/workflows/basedpl-wasm-test.yml
                                     PR WASM build/runtime regression tests
+    .github/workflows/deploy-cloudflare.yml
+                                    Manual: redeploy the latest successful Pages build to Cloudflare
     build.py                        Reference-page generator
 
 ## Interpreter integration
@@ -38,7 +46,14 @@ The interpreter runs in a Web Worker so evaluation does not block the UI thread.
 The application pins:
 
     AnswerDotAI/basedpl
-    44352d9b63ef7532055f373c6cc32984430f71f5
+    v0.1.28  (f340438bb01536bda09cf3ee16a0eb057d1372c0)
+
+This is an officially tagged, released revision -- the same commit the
+`basedpl` npm package ships from -- not an arbitrary commit. Bumping this pin
+is a deliberate, separate task: it's a large revision jump each time (the
+BasedPL evaluator gets refactored internally fairly often), so treat it as
+its own change with its own full regression pass (`scripts/build_and_test_jupyterlite.sh`,
+not just the WASM diagnostic smoke test below), not a drive-by edit.
 
 The wrapper uses the real Rust API:
 
@@ -71,7 +86,14 @@ UI renders captured output/display events and shows `error` when present.
 
 A deployed browser E2E test in `tests/e2e/repl.mjs` exercises the actual GitHub
 Pages URL and verifies visible output for `3`, `2+4`, `⍳5`, and `+/ 1 2 3`.
-The Pages workflow runs that test only after the deployment job succeeds.
+This (and the JupyterLite/example-notebook E2E tests) run from
+`.github/workflows/e2e.yml`, triggered manually from the Actions tab --
+deliberately **not** part of the Pages build/deploy workflow. A real-browser
+E2E run takes several minutes and has no business gating or blocking a
+deploy; it also means a flaky/slow E2E run can no longer make
+`deploy-cloudflare.yml`'s "latest successful Pages build" lookup
+(which checks the whole `pages.yml` run's status) skip a perfectly good,
+already-deployed build.
 
 ## WASM compatibility fixes
 
@@ -222,7 +244,7 @@ This keeps upstream untouched, makes the compatibility delta reviewable, and mak
 
 ## Production Pages build
 
-.github/workflows/pages.yml uses the same preparation script as the PR workflow, so deployment and testing use the same BasedPL revision and WASM compatibility patch.
+.github/workflows/pages.yml uses the same preparation script as the PR workflow, so the deployed build and the PR regression test use the same BasedPL revision and WASM compatibility patch. (Browser E2E against the deployed site is a separate, manually-triggered workflow -- see `.github/workflows/e2e.yml` above.)
 
 After the WASM fix is merged to main, GitHub Pages must rebuild the worker and wasm-bindgen assets. A browser can otherwise continue executing an older worker/wasm pair from cache.
 
