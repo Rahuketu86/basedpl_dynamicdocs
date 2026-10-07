@@ -6,7 +6,7 @@ import type { IKernel } from '@jupyterlite/services';
 import { IKernelSpecs } from '@jupyterlite/services';
 import { INotebookTracker } from '@jupyterlab/notebook';
 import { IMainMenu } from '@jupyterlab/mainmenu';
-import { Menu, Widget } from '@lumino/widgets';
+import { BoxLayout, Menu, Widget } from '@lumino/widgets';
 import { BasedPLKernel } from './kernel.js';
 import layout from './layout.js';
 
@@ -344,6 +344,7 @@ const kernel: JupyterFrontEndPlugin<void> = {
       if (hidden) {
         inputWidget.hide();
         inputWidget.node.style.minHeight = '0px';
+        if (inputWidget.parent) BoxLayout.setSizeBasis(inputWidget.parent, 0);
         if (headerPanel) headerPanel.style.minHeight = '0px';
         return;
       }
@@ -387,6 +388,11 @@ const kernel: JupyterFrontEndPlugin<void> = {
         // the actual shell widget is the supported fix for this header-area
         // layout behavior.
         inputWidget.node.style.minHeight = height + 'px';
+        // LabShell's root is a Lumino BoxLayout. CSS min-height alone does
+        // not reliably reserve space for a zero-stretch header child.
+        // Set the actual BoxLayout size basis so the top panel is laid out
+        // below the BasedPL widget instead of painting over it.
+        if (inputWidget.parent) BoxLayout.setSizeBasis(inputWidget.parent, height);
         headerPanel.style.minHeight = height + 'px';
         app.shell.fit();
       });
@@ -419,6 +425,7 @@ const kernel: JupyterFrontEndPlugin<void> = {
       inputWidget.hide();
       inputWidget.node.style.display = 'none';
       inputWidget.node.style.minHeight = '0px';
+      if (inputWidget.parent) BoxLayout.setSizeBasis(inputWidget.parent, 0);
       if (headerPanel) headerPanel.style.minHeight = '0px';
       app.shell.fit();
       app.commands.notifyCommandChanged(commandIds.showKeyboard);
