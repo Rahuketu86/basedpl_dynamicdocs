@@ -1,4 +1,4 @@
-import init, { BplSession, configure } from './basedpl_web.js';
+import init, { BplSession, configure, symbols } from './basedpl_web.js';
 
 type InitRequest = {
   type: 'init';
@@ -14,13 +14,19 @@ type EvalRequest = {
   code: string;
 };
 
+type SymbolsRequest = {
+  type: 'symbols';
+  requestId: string;
+  generation: number;
+};
+
 type ShutdownRequest = {
   type: 'shutdown';
   requestId: string;
   generation: number;
 };
 
-type Request = InitRequest | EvalRequest | ShutdownRequest;
+type Request = InitRequest | EvalRequest | SymbolsRequest | ShutdownRequest;
 
 type EvalPayload = {
   output: string;
@@ -98,6 +104,29 @@ async function handle(request: Request): Promise<void> {
         }
       });
     }
+    return;
+  }
+
+  if (request.type === 'symbols') {
+    if (!initialized || !session) {
+      self.postMessage({
+        type: 'error',
+        requestId: request.requestId,
+        generation: request.generation,
+        error: {
+          code: 'NOT_READY',
+          message: 'BasedPL agent worker is not initialized'
+        }
+      });
+      return;
+    }
+
+    self.postMessage({
+      type: 'symbols',
+      requestId: request.requestId,
+      generation: request.generation,
+      symbols: JSON.parse(symbols())
+    });
     return;
   }
 
