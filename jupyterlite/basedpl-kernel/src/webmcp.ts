@@ -52,7 +52,7 @@ export async function registerBasedPLWebMCP(
       annotations: {
         readOnlyHint: false,
         consequentialHint: false,
-        untrustedContentHint: false
+        untrustedContentHint: true
       },
       execute: async (input, context) => {
         const code = typeof input.code === 'string' ? input.code : '';
