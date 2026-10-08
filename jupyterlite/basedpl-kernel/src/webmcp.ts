@@ -16,6 +16,7 @@ type WebMCPDocument = Document & {
       },
       options?: { signal?: AbortSignal }
     ): Promise<void>;
+    getTools?: () => Promise<Array<{ name: string }>>;
   };
 };
 
@@ -35,7 +36,12 @@ export async function registerBasedPLWebMCP(
   filesBase: string
 ): Promise<(() => Promise<void>) | null> {
   const modelContext = (document as WebMCPDocument).modelContext;
-  if (!modelContext) return null;
+  if (!modelContext) {
+    console.warn('BasedPL WebMCP: document.modelContext unavailable');
+    return null;
+  }
+
+  console.info('BasedPL WebMCP: document.modelContext available; registering tools');
 
   const session = new AgentSession(filesBase);
   const controller = new AbortController();
@@ -63,6 +69,7 @@ export async function registerBasedPLWebMCP(
     },
     { signal: controller.signal }
   );
+  console.info('BasedPL WebMCP: registered basedpl_eval');
 
   await modelContext.registerTool(
     {
@@ -90,8 +97,26 @@ export async function registerBasedPLWebMCP(
     },
     { signal: controller.signal }
   );
+  console.info('BasedPL WebMCP: registered basedpl_reset');
 
-
+  if (modelContext.getTools) {
+    try {
+      const tools = await modelContext.getTools();
+      console.info(
+        'BasedPL WebMCP: visible tools after registration',
+        tools.map(tool => tool.name)
+      );
+    } catch (error) {
+      console.warn(
+        'BasedPL WebMCP: getTools() verification failed; tools may still be registered',
+        error
+      );
+    }
+  } else {
+    console.info(
+      'BasedPL WebMCP: getTools() unavailable in this browser; registration completed'
+    );
+  }
 
   return async () => {
     controller.abort();
