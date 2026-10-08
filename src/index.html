@@ -493,41 +493,51 @@ async function getRootReferenceData(){
 function searchReferenceData(data,query,limit=5){
  const q=String(query||'').trim().toLowerCase();
  if(!q)throw new Error('INVALID_REQUEST: query is required');
- const scored=data.glyphs.map(g=>{
+ return data.glyphs.map(g=>{
   const fields={
-   glyph:String(g.glyph||'').toLowerCase(),
-   name:String(g.name||'').toLowerCase(),
-   key:String(g.key||'').toLowerCase(),
-   monad:String(g.monad||'').toLowerCase(),
-   dyad:String(g.dyad||'').toLowerCase(),
-   note:String(g.note||'').toLowerCase(),
+   glyph:String(g.glyph||'').toLowerCase(),name:String(g.name||'').toLowerCase(),
+   key:String(g.key||'').toLowerCase(),monad:String(g.monad||'').toLowerCase(),
+   dyad:String(g.dyad||'').toLowerCase(),note:String(g.note||'').toLowerCase(),
    examples:(data.examples?.[g.glyph]||[]).map(e=>e.join(' ')).join(' ').toLowerCase()
   };
   let score=0,matched=[];
-  if(fields.glyph===q){score+=100;matched.push('glyph')}
-  else if(fields.glyph.includes(q)){score+=70;matched.push('glyph')}
-  if(fields.name===q){score+=90;matched.push('name')}
-  else if(fields.name.startsWith(q)){score+=75;matched.push('name')}
-  else if(fields.name.includes(q)){score+=50;matched.push('name')}
-  for(const k of ['key','monad','dyad','note','examples']){
-   if(fields[k].includes(q)){score+=k==='examples'?15:25;matched.push(k)}
-  }
+  if(fields.glyph===q){score+=100;matched.push('glyph')}else if(fields.glyph.includes(q)){score+=70;matched.push('glyph')}
+  if(fields.name===q){score+=90;matched.push('name')}else if(fields.name.startsWith(q)){score+=75;matched.push('name')}else if(fields.name.includes(q)){score+=50;matched.push('name')}
+  for(const k of ['key','monad','dyad','note','examples'])if(fields[k].includes(q)){score+=k==='examples'?15:25;matched.push(k)}
   if(!matched.length)return null;
   return {score,matched:[...new Set(matched)],glyph:g};
  }).filter(Boolean).sort((a,b)=>b.score-a.score||a.glyph.name.localeCompare(b.glyph.name)).slice(0,Math.min(Number(limit)||5,10));
- return scored.map(({score,matched,g})=>({
-  glyph:g.glyph,name:g.name,key:g.key||null,
-  monad:g.monad||null,dyad:g.dyad||null,note:g.note||null,
-  documentation:[
-   g.glyph+' — '+g.name,
-   g.monad?'Monadic: '+g.monad:'',
-   g.dyad?'Dyadic: '+g.dyad:'',
-   g.note?'Notes: '+g.note:''
-  ].filter(Boolean).join('\n'),
-  examples:(data.examples?.[g.glyph]||[]).map(e=>({description:e[0],code:e[1],result:e[2]})),
-  documentation_url:'https://answerdotai.github.io/basedpl/glyphs/'+encodeURIComponent(g.slug||g.name)+'.html',
-  score,matched_fields:matched
- }));
+}
+async function fetchGlyphDocumentation(g, examples){
+ const url='https://answerdotai.github.io/basedpl/glyphs/'+encodeURIComponent(g.slug||g.name)+'.html';
+ const fallback=[g.glyph+' — '+g.name,g.key?'Key: '+g.key:'',g.monad?'Monadic: '+g.monad:'',g.dyad?'Dyadic: '+g.dyad:'',g.note?'Notes: '+g.note:''].filter(Boolean).join('\n');
+ try{
+  const r=await fetch(url,{mode:'cors',cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);
+  const doc=new DOMParser().parseFromString(await r.text(),'text/html');
+  const main=doc.querySelector('main')||doc.body;
+  const text=(main?.textContent||'').replace(/\s+/g,' ').trim();
+  return {
+   documentation:text||fallback,
+   documentation_source:text?'live-reference':'local-summary',
+   documentation_url:url,
+   examples:(examples||[]).map(e=>({description:e[0],code:e[1],result:e[2]}))
+  };
+ }catch(error){
+  return {
+   documentation:fallback,documentation_source:'local-summary',
+   documentation_url:url,documentation_error:String(error),
+   examples:(examples||[]).map(e=>({description:e[0],code:e[1],result:e[2]}))
+  };
+ }
+}
+async function searchReference(data,query,limit){
+ const matches=searchReferenceData(data,query,limit);
+ const results=await Promise.all(matches.map(async m=>({
+  glyph:m.glyph.glyph,name:m.glyph.name,key:m.glyph.key||null,monad:m.glyph.monad||null,dyad:m.glyph.dyad||null,
+  matched_fields:m.matched,score:m.score,
+  ...(await fetchGlyphDocumentation(m.glyph,data.examples?.[m.glyph.glyph]||[]))
+ })));
+ return {query:String(query||''),results};
 }
 const ROOT_WORKSPACE_CONTRACT=[
  'This is a live BasedPL workspace; changes to the REPL are immediately visible to the user.',
@@ -566,7 +576,7 @@ async function registerRootWebMCP(){
   annotations:{readOnlyHint:true,consequentialHint:false,untrustedContentHint:true},
   execute:async input=>{
    const data=await getRootReferenceData();
-   return {query:String(input.query||''),results:searchReferenceData(data,input.query,input.limit)};
+   return await searchReference(data,input.query,input.limit);
   }
  },{signal:controller.signal});
 
