@@ -15,6 +15,7 @@ import input from './input.js';
 // only has option/alt_aliases/states/unshifted, for the chord engine) --
 // kept as its own file so re-vendoring layout.js never clobbers it again.
 import keyboardRowsData from './keyboard_rows.js';
+import { registerBasedPLWebMCP } from './webmcp.js';
 
 const kernel: JupyterFrontEndPlugin<void> = {
   id: '@rahuketu86/basedpl-kernel:kernel',
@@ -27,6 +28,14 @@ const kernel: JupyterFrontEndPlugin<void> = {
     mainMenu: IMainMenu
   ) => {
     let activeKernel: BasedPLKernel | null = null;
+
+    // WebMCP gets its own lazy BasedPL worker/session. It deliberately does
+    // not reuse the active Jupyter kernel, so agent evaluation cannot mutate
+    // the user's notebook interpreter state.
+    const agentFilesBase = new URL('../files/', self.location.href).href;
+    void registerBasedPLWebMCP(agentFilesBase).catch(error => {
+      console.warn('BasedPL: WebMCP tools unavailable', error);
+    });
 
     kernelspecs.register({
       spec: {
