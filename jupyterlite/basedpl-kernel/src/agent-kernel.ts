@@ -51,6 +51,7 @@ let session: BplSession | null = null;
 let executionCount = 0;
 let wasmReady = false;
 let pendingBase: string | null = null;
+const pendingRequests: KernelRequest[] = [];
 
 async function start(): Promise<void> {
   await init();
@@ -221,9 +222,7 @@ function execute(request: ExecuteRequest): void {
   publish('status', request.header, { execution_state: 'idle' });
 }
 
-self.onmessage = event => {
-  const request = event.data as KernelRequest;
-
+function handle(request: KernelRequest): void {
   if (request.header?.msg_type === 'kernel_info_request') {
     self.postMessage({
       channel: 'shell',
@@ -251,9 +250,40 @@ self.onmessage = event => {
   if (request.header?.msg_type === 'execute_request') {
     execute(request);
   }
+}
+
+self.onmessage = event => {
+  const request = event.data as KernelRequest;
+  if (!session) {
+    pendingRequests.push(request);
+    return;
+  }
+  handle(request);
 };
 
-start().catch(error => {
+start().then(() => {
+  const queued = pendingRequests.splice(0);
+  for (const request of queued) handle(request);
+}).catch(error => {
+  const message = String(error);
+  for (const request of pendingRequests.splice(0)) {
+    if (request.header.msg_type === 'execute_request') {
+      self.postMessage({
+        channel: 'shell',
+        header: header('execute_reply', request.header),
+        parent_header: request.header,
+        metadata: {},
+        content: {
+          status: 'error',
+          execution_count: executionCount,
+          ename: 'WASMInitError',
+          evalue: message,
+          traceback: [message]
+        }
+      });
+    }
+  }
+
   self.postMessage({
     channel: 'iopub',
     header: {
@@ -267,8 +297,8 @@ start().catch(error => {
     metadata: {},
     content: {
       ename: 'WASMInitError',
-      evalue: String(error),
-      traceback: [String(error)]
+      evalue: message,
+      traceback: [message]
     }
   });
 });
