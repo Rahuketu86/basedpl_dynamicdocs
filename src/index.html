@@ -531,7 +531,7 @@ const ROOT_WORKSPACE_CONTRACT=[
 async function registerRootWebMCP(){
  const mc=document.modelContext;
  const status=rootWebMCPStatus();
- if(!mc){status.textContent='WebMCP: document.modelContext unavailable';status.style.borderColor='#c62828';return;}
+ if(!mc){status.title='WebMCP unavailable: document.modelContext is not present';status.style.borderColor='rgba(0,0,0,.14)';if(status._statusDot)status._statusDot.style.color='#c62828';return;}
  const setStatus=(s,ok=true)=>{status.title=s;status.style.borderColor='rgba(0,0,0,.14)';if(status._statusDot)status._statusDot.style.color=ok?'#2e7d32':'#c62828';};
  const controller=new AbortController();
 
