@@ -74,7 +74,7 @@ export class AgentSession {
     private readonly timeoutMs = DEFAULT_TIMEOUT_MS
   ) {}
 
-  get currentGeneration((): number {
+  get currentGeneration(): number {
     return this.generation;
   }
 
@@ -176,7 +176,7 @@ export class AgentSession {
           }
           resolve();
         },
-        rezect
+        reject
       });
 
       worker.postMessage({type: 'configure', base: this.filesBase});
