@@ -110,75 +110,76 @@ const getReferenceData = async (): Promise<ReferenceData> => {
   return referenceDataPromise;
 };
 
-const searchReferenceData = (data: ReferenceData, query: string, limit = 5): ReferenceMatch[] => {
-  const q = query.trim().toLowerCase();
-  if (!q) throw new Error('INVALID_REQUEST: query is required');
+const REFERENCE_DOC_CACHE_TTL_MS = 5 * 60 * 1000;
+const referenceDocCache = new Map<string, { timestamp: number; value: Promise<Record<string, unknown>> }>();
+const normalizeSearchText = (value: unknown): string =>
+  String(value ?? '').toLowerCase().replace(/[^\\p{L}\\p{N}]+/gu, ' ').trim();
+const searchTokens = (value: string): string[] =>
+  [...new Set(normalizeSearchText(value).split(/\\s+/).filter(Boolean))];
 
+const searchReferenceData = (
+  data: ReferenceData, query: string, limit = 5, field = 'all'
+): ReferenceMatch[] => {
+  const raw = query.trim(); if (!raw) throw new Error('INVALID_REQUEST: query is required');
+  const q = raw.toLowerCase(), tokens = searchTokens(raw);
+  const allowed = field === 'all'
+    ? ['glyph', 'name', 'key', 'monad', 'dyad', 'note', 'examples']
+    : [field];
   return data.glyphs.map(g => {
     const fields = {
-      glyph: String(g.glyph ?? '').toLowerCase(),
-      name: String(g.name ?? '').toLowerCase(),
-      key: String(g.key ?? '').toLowerCase(),
-      monad: String(g.monad ?? '').toLowerCase(),
-      dyad: String(g.dyad ?? '').toLowerCase(),
-      note: String(g.note ?? '').toLowerCase(),
+      glyph: String(g.glyph ?? '').toLowerCase(), name: String(g.name ?? '').toLowerCase(),
+      key: String(g.key ?? '').toLowerCase(), monad: String(g.monad ?? '').toLowerCase(),
+      dyad: String(g.dyad ?? '').toLowerCase(), note: String(g.note ?? '').toLowerCase(),
       examples: (data.examples?.[String(g.glyph)] ?? []).map(e => e.join(' ')).join(' ').toLowerCase()
     };
-    let score = 0;
-    const matched: string[] = [];
-    if (fields.glyph === q) { score += 100; matched.push('glyph'); }
-    else if (fields.glyph.includes(q)) { score += 70; matched.push('glyph'); }
-    if (fields.name === q) { score += 90; matched.push('name'); }
-    else if (fields.name.startsWith(q)) { score += 75; matched.push('name'); }
-    else if (fields.name.includes(q)) { score += 50; matched.push('name'); }
-    for (const field of ['key', 'monad', 'dyad', 'note', 'examples'] as const) {
-      if (fields[field].includes(q)) {
-        score += field === 'examples' ? 15 : 25;
-        matched.push(field);
+    let score = 0; const matched: string[] = [];
+    for (const key of allowed) {
+      const value = fields[key as keyof typeof fields];
+      if (value === q) { score += key === 'glyph' ? 140 : key === 'name' ? 130 : 90; matched.push(key); continue; }
+      if (value.includes(q)) { score += key === 'glyph' ? 90 : key === 'name' ? 75 : key === 'examples' ? 20 : 35; matched.push(key); }
+      const hits = tokens.filter(token => value.includes(token)).length;
+      if (tokens.length > 1 && hits) {
+        score += hits * (key === 'name' ? 30 : key === 'glyph' ? 35 : key === 'examples' ? 8 : 12);
+        if (hits === tokens.length) score += 35;
+        matched.push(key);
       }
     }
     if (!matched.length) return null;
-    return { score, matched: [...new Set(matched)], glyph: g };
+    const unique = [...new Set(matched)];
+    if (tokens.length > 1 && unique.length === 1 && !fields[unique[0] as keyof typeof fields].includes(q)) score -= 15;
+    return { score, matched: unique, glyph: g };
   }).filter((x): x is ReferenceMatch => x !== null)
     .sort((a, b) => b.score - a.score || String(a.glyph.name).localeCompare(String(b.glyph.name)))
     .slice(0, Math.min(Math.max(limit, 1), 10));
 };
 
 const fetchGlyphDocumentation = async (
-  glyph: Record<string, any>,
-  examples: string[][] = []
+  glyph: Record<string, any>, examples: string[][] = [], forceRefresh = false
 ): Promise<Record<string, unknown>> => {
   const url = `https://answerdotai.github.io/basedpl/glyphs/${encodeURIComponent(glyph.slug || glyph.name)}.html`;
+  const cached = referenceDocCache.get(url), now = Date.now();
+  if (!forceRefresh && cached && now - cached.timestamp < REFERENCE_DOC_CACHE_TTL_MS) return cached.value;
   const fallback = [
-    `${glyph.glyph} — ${glyph.name}`,
-    glyph.key ? `Key: ${glyph.key}` : '',
-    glyph.monad ? `Monadic: ${glyph.monad}` : '',
-    glyph.dyad ? `Dyadic: ${glyph.dyad}` : '',
+    `${glyph.glyph} — ${glyph.name}`, glyph.key ? `Key: ${glyph.key}` : '',
+    glyph.monad ? `Monadic: ${glyph.monad}` : '', glyph.dyad ? `Dyadic: ${glyph.dyad}` : '',
     glyph.note ? `Notes: ${glyph.note}` : ''
-  ].filter(Boolean).join('\n');
-
-  try {
-    const response = await fetch(url, { mode: 'cors', cache: 'no-store' });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const html = await response.text();
-    const parsed = new DOMParser().parseFromString(html, 'text/html');
-    const main = parsed.querySelector('main') ?? parsed.body;
-    const documentation = (main?.textContent ?? '').replace(/\\s+/g, ' ').trim();
-    return {
-      documentation: truncate(documentation || fallback, 20000),
-      documentation_source: documentation ? 'live-reference' : 'local-summary',
-      documentation_url: url,
-      examples: examples.map(e => ({ description: e[0], code: e[1], result: e[2] }))
-    };
-  } catch (error) {
-    return {
-      documentation: fallback,
-      documentation_source: 'local-summary',
-      documentation_url: url,
-      documentation_error: String(error),
-      examples: examples.map(e => ({ description: e[0], code: e[1], result: e[2] }))
-    };
-  }
+  ].filter(Boolean).join('\\n');
+  const value = (async () => {
+    try {
+      const response = await fetch(url, { mode: 'cors', cache: 'no-store' });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const parsed = new DOMParser().parseFromString(await response.text(), 'text/html');
+      const main = parsed.querySelector('main') ?? parsed.body;
+      const documentation = (main?.textContent ?? '').replace(/\\s+/g, ' ').trim();
+      return { documentation: truncate(documentation || fallback, 20000), documentation_source: documentation ? 'live-reference' : 'local-summary',
+        documentation_url: url, examples: examples.map(e => ({ description: e[0], code: e[1], result: e[2] })) };
+    } catch (error) {
+      return { documentation: fallback, documentation_source: 'local-summary', documentation_url: url, documentation_error: String(error),
+        examples: examples.map(e => ({ description: e[0], code: e[1], result: e[2] })) };
+    }
+  })();
+  referenceDocCache.set(url, { timestamp: now, value });
+  return value;
 };
 
 const outputSummary = (output: any): Record<string, unknown> => {
@@ -707,7 +708,9 @@ export async function registerBasedPLWebMCP(
       type: 'object',
       properties: {
         query: { type: 'string', description: 'Glyph, glyph name, keyboard chord, meaning, or concept.' },
-        limit: { type: 'integer', minimum: 1, maximum: 10, default: 5 }
+        limit: { type: 'integer', minimum: 1, maximum: 10, default: 5 },
+        field: { type: 'string', enum: ['all', 'glyph', 'name', 'key', 'monad', 'dyad', 'note', 'examples'], default: 'all' },
+        fresh: { type: 'boolean', default: false, description: 'Bypass the 5-minute live documentation cache.' }
       },
       required: ['query'],
       additionalProperties: false
@@ -715,7 +718,7 @@ export async function registerBasedPLWebMCP(
     annotations: { readOnlyHint: true, consequentialHint: false, untrustedContentHint: true },
     execute: async input => {
       const data = await getReferenceData();
-      const matches = searchReferenceData(data, String(input.query ?? ''), Number(input.limit ?? 5));
+      const matches = searchReferenceData(data, String(input.query ?? ''), Number(input.limit ?? 5), String(input.field ?? 'all'));
       const results = await Promise.all(matches.map(async match => ({
         glyph: match.glyph.glyph,
         name: match.glyph.name,
@@ -724,7 +727,7 @@ export async function registerBasedPLWebMCP(
         dyad: match.glyph.dyad || null,
         matched_fields: match.matched,
         score: match.score,
-        ...(await fetchGlyphDocumentation(match.glyph, data.examples?.[String(match.glyph.glyph)] ?? []))
+        ...(await fetchGlyphDocumentation(match.glyph, data.examples?.[String(match.glyph.glyph)] ?? [], input.fresh === true))
       })));
       return { query: String(input.query ?? ''), results };
     }
