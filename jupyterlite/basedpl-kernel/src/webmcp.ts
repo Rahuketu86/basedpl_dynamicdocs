@@ -107,14 +107,10 @@ export async function registerBasedPLWebMCP(
         consequentialHint: false,
         untrustedContentHint: false
       },
-      execute: async () => {
-        // Use the same public glyph table already loaded by the kernel worker.
-        // This import-free tool intentionally exposes only static symbol metadata.
-        return {
-          status: 'ok',
-          message: 'Use the BasedPL keyboard/reference on this page for the current glyph table.'
-        };
-      }
+      execute: async (_input, context) => ({
+        status: 'ok',
+        symbols: await session.symbols(context.signal)
+      })
     },
     { signal: controller.signal }
   );
