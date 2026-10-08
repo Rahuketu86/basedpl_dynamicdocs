@@ -29,18 +29,10 @@ const kernel: JupyterFrontEndPlugin<void> = {
   ) => {
     let activeKernel: BasedPLKernel | null = null;
 
-    // WebMCP gets its own lazy BasedPL worker/session. It deliberately does
-    // not reuse the active Jupyter kernel, so agent evaluation cannot mutate
-    // the user's notebook interpreter state.
-    const agentFilesBase = new URL('../files/', self.location.href).href;
-    void registerBasedPLWebMCP(agentFilesBase).catch(error => {
-      console.warn('BasedPL: WebMCP tools unavailable', error);
-      const status = document.getElementById('basedpl-webmcp-status');
-      if (status) {
-        status.textContent = 'WebMCP: registration failed\\nCheck console for details.';
-        status.style.borderColor = '#c62828';
-      }
-    });
+    // WebMCP operates on the real current JupyterLite notebook.
+    // It never creates a second agent kernel/session, so human edits and agent
+    // edits share the same document and BasedPL Jupyter kernel.
+    void registerBasedPLWebMCP(notebookTracker).catch(error => {    });
 
     kernelspecs.register({
       spec: {
