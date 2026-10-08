@@ -20,45 +20,33 @@ export type AgentExecuteResult = {
   outputs: JupyterMessage[];
 };
 
-type PendingRequest = {
+type Pending = {
   resolve: (message: JupyterMessage) => void;
   reject: (error: Error) => void;
 };
 
-type PendingExecution = {
+type Execution = {
   resolve: (result: AgentExecuteResult) => void;
   reject: (error: Error) => void;
   messages: JupyterMessage[];
   outputs: JupyterMessage[];
 };
 
-const DEFAULT_TIMEOUT_MS = 5_000;
-const MAX_CODE_CHARS = 16_384;
+const TIMEOUT_MS = 5000;
+const MAX_CODE_CHARS = 16384;
 const SESSION_ID = crypto.randomUUID();
 
-function uuid(): string {
-  return crypto.randomUUID();
-}
+const parentId = (message: JupyterMessage): string | undefined =>
+  typeof message.parent_header?.msg_id === 'string'
+    ? message.parent_header.msg_id
+    : undefined;
 
-function parentId(message: JupyterMessage): string | undefined {
-  const parent = message.parent_header;
-  return typeof parent?.msg_id === 'string' ? parent.msg_id : undefined;
-}
-
-function isOutputMessage(message: JupyterMessage): boolean {
-  return (
-    message.channel === 'iopub' &&
-    ['execute_result', 'display_data', 'stream', 'error'].includes(
-      message.header.msg_type
-    )
+const isOutput = (message: JupyterMessage): boolean =>
+  message.channel === 'iopub' &&
+  ['execute_result', 'display_data', 'stream', 'error'].includes(
+    message.header.msg_type
   );
-}
 
-/**
- * Persistent isolated BasedPL kernel exposed as a Jupyter client.
- * WebMCP sends execute_request messages and consumes execute_reply/IOPub
- * messages. The WASM value layer remains completely unchanged.
- */
 export class AgentSession {
   private worker: Worker | null = null;
   private generation = 0;
@@ -66,20 +54,19 @@ export class AgentSession {
   private ready: Promise<void> | null = null;
   private queue: Promise<unknown> = Promise.resolve();
   private queueEpoch = 0;
-  private pending = new Map<string, PendingRequest>();
-  private executions = new Map<string, PendingExecution>();
+  private pending = new Map<string, Pending>();
+  private executions = new Map<string, Execution>();
 
   constructor(
     private readonly filesBase: string,
-    private readonly timeoutMs = DEFAULT_TIMEOUT_MS
+    private readonly timeoutMs = TIMEOUT_MS
   ) {}
 
-  get currentGeneration(): number {
-    return this.generation;
-  }
-
-  get isReady(): boolean {
-    return this.state === 'ready';
+  private failAll(error: Error): void {
+    for (const p of this.pending.values()) p.reject(error);
+    for (const e of this.executions.values()) e.reject(error);
+    this.pending.clear();
+    this.executions.clear();
   }
 
   private createWorker(): Worker {
@@ -88,40 +75,24 @@ export class AgentSession {
       { type: 'module' }
     );
 
-    worker.onmessage = event => {
-      this.handleMessage(event.data as JupyterMessage);
-    };
-
+    worker.onmessage = event => this.handleMessage(event.data as JupyterMessage);
     worker.onerror = event => {
-      const error = new Error(
-        event.message || 'BasedPL agent kernel worker failed'
-      );
-      this.failAll(error);
+      this.failAll(new Error(event.message || 'BasedPL agent kernel failed'));
       this.state = 'closed';
     };
-
     worker.onmessageerror = () => {
-      const error = new Error(
-        'BasedPL agent kernel message could not be deserialized'
-      );
-      this.failAll(error);
+      this.failAll(new Error('BasedPL agent kernel message error'));
       this.state = 'closed';
     };
+
     return worker;
-  }
-
-  private failAll(error: Error): void {
-    for (const pending of this.pending.values()) pending.reject(error);
-    this.pending.clear();
-
-    for (const execution of this.executions.values()) execution.reject(error);
-    this.executions.clear();
   }
 
   private handleMessage(message: JupyterMessage): void {
     const parent = parentId(message);
+    if (!parent) return;
 
-    if (message.channel === 'shell' && parent) {
+    if (message.channel === 'shell') {
       const execution = this.executions.get(parent);
       if (execution && message.header.msg_type === 'execute_reply') {
         execution.messages.push(message);
@@ -142,12 +113,10 @@ export class AgentSession {
       }
     }
 
-    if (parent) {
-      const execution = this.executions.get(parent);
-      if (execution) {
-        execution.messages.push(message);
-        if (isOutputMessage(message)) execution.outputs.push(message);
-      }
+    const execution = this.executions.get(parent);
+    if (execution) {
+      execution.messages.push(message);
+      if (isOutput(message)) execution.outputs.push(message);
     }
   }
 
@@ -156,22 +125,20 @@ export class AgentSession {
     if (this.ready) return this.ready;
 
     this.state = 'initializing';
-    const generation = ++ this.generation;
+    const generation = ++this.generation;
     const worker = this.createWorker();
     this.worker = worker;
 
     this.ready = new Promise<void>((resolve, reject) => {
-      const requestId = uuid();
+      const requestId = crypto.randomUUID();
 
       this.pending.set(requestId, {
         resolve: message => {
           if (message.header.msg_type !== 'kernel_info_reply') {
-            reject(
-              new Error(
-                'Unexpected Jupyter handshake response: ' +
-                  message.header.msg_type
-              )
-            );
+            reject(new Error(
+              'Unexpected Jupyter handshake response: ' +
+              message.header.msg_type
+            ));
             return;
           }
           resolve();
@@ -179,7 +146,9 @@ export class AgentSession {
         reject
       });
 
-      worker.postMessage({type: 'configure', base: this.filesBase});
+      // Only worker bootstrap uses a non-Jupyter message. All runtime
+      // interaction below is standard Jupyter kernel messaging.
+      worker.postMessage({ type: 'configure', base: this.filesBase });
 
       worker.postMessage({
         channel: 'shell',
@@ -195,70 +164,157 @@ export class AgentSession {
         content: {}
       } satisfies JupyterMessage);
     }).then(() => {
-        if (generation !== this.generation || this.worker !== worker) {
-          throw new Error('STALE_KERNEL: agent kernel was replaced during startup');
-        }
-        this.state = 'ready';
-      }, error => {
-        if (this.worker === worker) {
-          worker.terminate();
-          this.worker = null;
-        }
-        this.state = 'closed';
-        throw error;
-      }).finally(() => {
+      if (generation !== this.generation || this.worker !== worker) {
+        throw new Error('STALE_KERNEL: agent kernel was replaced');
+      }
+      this.state = 'ready';
+    }).catch(error => {
+      if (this.worker === worker) {
+        worker.terminate();
+        this.worker = null;
+      }
+      this.state = 'closed';
+      throw error;
+    }).finally(() => {
       this.ready = null;
     });
 
     return this.ready;
   }
 
-  private async executeRequest(code: string, signal?: AbortSignal): Promise<AgentExecuteResult> {
-    if (code.length > MAX_CODE_CHARS) throw new Error('INPUT_TOO_LARGE: BasedPL code is limited to ' + MAX_CODE_CHARS + ' characters');
+  private async executeRequest(
+    code: string,
+    signal?: AbortSignal
+  ): Promise<AgentExecuteResult> {
+    if (code.length > MAX_CODE_CHARS) {
+      throw new Error(
+        'INPUT_TOO_LARGE: BasedPL code is limited to ' +
+        MAX_CODE_CHARS +
+        ' characters'
+      );
+    }
 
     await this.start();
     if (signal?.aborted) {
       await this.reset();
       throw new Error('CANCELLED: BasedPL evaluation was cancelled');
     }
+
     const worker = this.worker;
     if (!worker) throw new Error('BasedPL agent kernel is unavailable');
+
     const generation = this.generation;
-    const requestId = uuid();
+    const requestId = crypto.randomUUID();
 
-    return await new Promise<AgentExecuteResult>((resolve, reject) => {
+    return new Promise<AgentExecuteResult>((resolve, reject) => {
       let timer: ReturnType<typeof setTimeout> | undefined;
-      const cleanup = () => { if (timer) clearTimeout(timer); signal?.removeEventListener('abort', onAbort); };
-      const onAbort = () => { this.executions.delete(requestId); cleanup(); void this.reset().finally(() => reject(new Error('CANCELLED: BasedPL evaluation was canceled')); };
-      this.executions.set(requestId, { resolve: result => { cleanup(); resolve(result); }, reject: error => { cleanup(); reject(error); }, messages: [], outputs: [] });
-      timer = setTimeout(() => { this.executions.delete(requestId); cleanup(); void this.reset().finally(() => reject(new Error('TIMEOUT: BasedPL evaluation exceeded ' + this.timeoutMs + 'ms and the agent kernel was reset')); }, this.timeoutMs);
+
+      const cleanup = () => {
+        if (timer) clearTimeout(timer);
+        signal?.removeEventListener('abort', onAbort);
+      };
+
+      const onAbort = () => {
+        this.executions.delete(requestId);
+        cleanup();
+        void this.reset().finally(() =>
+          reject(new Error('CANCELLED: BasedPL evaluation was cancelled'))
+        );
+      };
+
+      this.executions.set(requestId, {
+        resolve: result => {
+          cleanup();
+          resolve(result);
+        },
+        reject: error => {
+          cleanup();
+          reject(error);
+        },
+        messages: [],
+        outputs: []
+      });
+
+      timer = setTimeout(() => {
+        this.executions.delete(requestId);
+        cleanup();
+        void this.reset().finally(() =>
+          reject(new Error(
+            'TIMEOUT: BasedPL evaluation exceeded ' +
+            this.timeoutMs +
+            'ms and the agent kernel was reset'
+          ))
+        );
+      }, this.timeoutMs);
+
       signal?.addEventListener('abort', onAbort, { once: true });
-      if (generation !== this.generation || this.worker !== worker) { cleanup(); this.executions.delete(requestId); reject(new Error('STALE_KERNEL: agent kernel was replaced')); return; }
-      worker.postMessage({channel: 'shell', header: { msg_id: requestId, msg_type: 'execute_request', session: SESSION_ID, username: 'agent',\Ú[Û	ÍKÉÈK\[ÚXY\ßKY]Y]NßKÛÛ[ÈÛÙKÚ[[[ÙKÝÜWÚ\ÝÜNYK\Ù\Ù^\ÜÚ[ÛÎßK[Ý×ÜÝ[[ÙKÝÜÛÛÙ\ÜYHHJNÂJNÂB][
-ÛÙNÝ[ËÚYÛ[ÎXÜÚYÛ[
-NÛZ\ÙOYÙ[^XÝ]T\Ý[ÂÛÛÝ\ØÚH\Ë]Y]YQ\ØÚÂÛÛÝØH\Ë]Y]YK[
 
-HOÂY
-\ØÚOOH\Ë]Y]YQ\ØÚ
-HÝÈ]È\Ü	ÔÑTÔÒSÓÔTÑU]Y]YY][X][ÛØ\È\ØØ\Y	ÊNÂ]\\Ë^XÝ]T\]Y\Ý
-ÛÙKÚYÛ[
-NÂJNÂ\Ë]Y]YHHØØ]Ú
+      if (generation !== this.generation || this.worker !== worker) {
+        cleanup();
+        this.executions.delete(requestId);
+        reject(new Error('STALE_KERNEL: agent kernel was replaced'));
+        return;
+      }
 
+      worker.postMessage({
+        channel: 'shell',
+        header: {
+          msg_id: requestId,
+          msg_type: 'execute_request',
+          session: SESSION_ID,
+          username: 'agent',
+          version: '5.3'
+        },
+        parent_header: {},
+        metadata: {},
+        content: {
+          code,
+          silent: false,
+          store_history: true,
+          user_expressions: {},
+          allow_stdin: false,
+          stop_on_error: true
+        }
+      } satisfies JupyterMessage);
+    });
+  }
 
-HO[Y[Y
-NÂ]\ØÂB\Þ[È\Ù]
+  eval(code: string, signal?: AbortSignal): Promise<AgentExecuteResult> {
+    const epoch = this.queueEpoch;
+    const job = this.queue.then(() => {
+      if (epoch !== this.queueEpoch) {
+        throw new Error('SESSION_RESET: queued evaluation was discarded');
+      }
+      return this.executeRequest(code, signal);
+    });
+    this.queue = job.catch(() => undefined);
+    return job;
+  }
 
-NÛZ\ÙOÚYÂ\ËÝ]HH	Ü\Ù][ÉÎÂ\Ë]Y]YQ\ØÚ
-ÏHNÂ\ËÙ[\][Û
-ÏHNÂ\ËZ[[
-]È\Ü	ÔÑTÔÒSÓÔTÑU	ÊJNÂÛÛÝÛÜÙ\H\ËÛÜÙ\Â\ËÛÜÙ\H[Â\ËXYHH[ÂY
-ÛÜÙ\HÛÜÙ\\Z[]J
-NÂ\ËÝ]HH	ØÛÜÙY	ÎÂ]ØZ]\ËÝ\
+  async reset(): Promise<void> {
+    this.state = 'resetting';
+    this.queueEpoch += 1;
+    this.generation += 1;
+    this.failAll(new Error('SESSION_RESET'));
 
-NÂB\Þ[ÈÛÜÙJ
-NÛZ\ÙOÚYÂ\Ë]Y]YQ\ØÚ
-ÏHNÂ\ËÙ[\][Û
-ÏHNÂ\ËZ[[
-]È\Ü	ÔÑTÔÒSÓÐÓÔÑQ	ÊJNÂÛÛÝÛÜÙ\H\ËÛÜÙ\Â\ËÛÜÙ\H[Â\ËXYHH[Â\ËÝ]HH	ØÛÜÙY	ÎÂY
-ÛÜÙ\HÛÜÙ\\Z[]J
-NÂBÿÿÿ
+    const worker = this.worker;
+    this.worker = null;
+    this.ready = null;
+    if (worker) worker.terminate();
+
+    this.state = 'closed';
+    await this.start();
+  }
+
+  async close(): Promise<void> {
+    this.queueEpoch += 1;
+    this.generation += 1;
+    this.failAll(new Error('SESSION_CLOSED'));
+
+    const worker = this.worker;
+    this.worker = null;
+    this.ready = null;
+    this.state = 'closed';
+    if (worker) worker.terminate();
+  }
+}
