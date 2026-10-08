@@ -1,0 +1,1520 @@
+{
+  "glyphs": [
+    {
+      "glyph": "+",
+      "name": "add",
+      "key": "",
+      "monad": "conjugate",
+      "dyad": "plus",
+      "note": "",
+      "slug": "add"
+    },
+    {
+      "glyph": "-",
+      "name": "dash",
+      "key": "",
+      "monad": "negate",
+      "dyad": "subtract",
+      "note": "",
+      "slug": "dash"
+    },
+    {
+      "glyph": "×",
+      "name": "mul",
+      "key": "Alt-m",
+      "monad": "sign",
+      "dyad": "times",
+      "note": "",
+      "slug": "mul"
+    },
+    {
+      "glyph": "÷",
+      "name": "div",
+      "key": "Alt-u",
+      "monad": "reciprocal",
+      "dyad": "divide",
+      "note": "",
+      "slug": "div"
+    },
+    {
+      "glyph": "⌊",
+      "name": "floor",
+      "key": "Alt-d",
+      "monad": "floor",
+      "dyad": "min",
+      "note": "",
+      "slug": "floor"
+    },
+    {
+      "glyph": "⌈",
+      "name": "ceiling",
+      "key": "Alt-s",
+      "monad": "ceiling",
+      "dyad": "max",
+      "note": "",
+      "slug": "ceiling"
+    },
+    {
+      "glyph": "\\",
+      "name": "stile",
+      "key": "",
+      "monad": "magnitude",
+      "dyad": "residue",
+      "note": "",
+      "slug": "stile"
+    },
+    {
+      "glyph": "*",
+      "name": "star",
+      "key": "",
+      "monad": "exponential",
+      "dyad": "exponent",
+      "note": "",
+      "slug": "star"
+    },
+    {
+      "glyph": "⍟",
+      "name": "log",
+      "key": "Alt-o *",
+      "monad": "logarithm",
+      "dyad": "log",
+      "note": "",
+      "slug": "log"
+    },
+    {
+      "glyph": "○",
+      "name": "circle",
+      "key": "Alt-o",
+      "monad": "cis",
+      "dyad": "circle",
+      "note": "",
+      "slug": "circle"
+    },
+    {
+      "glyph": "π",
+      "name": "pi",
+      "key": "Alt-p",
+      "monad": "pi-times",
+      "dyad": "pi-ratio",
+      "note": "",
+      "slug": "pi"
+    },
+    {
+      "glyph": "√",
+      "name": "root",
+      "key": "Alt-3",
+      "monad": "sqrt",
+      "dyad": "root",
+      "note": "",
+      "slug": "root"
+    },
+    {
+      "glyph": "!",
+      "name": "factorial",
+      "key": "",
+      "monad": "factorial",
+      "dyad": "binomial",
+      "note": "",
+      "slug": "factorial"
+    },
+    {
+      "glyph": "⍭",
+      "name": "prime",
+      "key": "Alt-\\ ~",
+      "monad": "prime",
+      "dyad": "prime-mode",
+      "note": "",
+      "slug": "prime"
+    },
+    {
+      "glyph": "⨸",
+      "name": "factor",
+      "key": "Alt-o u",
+      "monad": "factors",
+      "dyad": "factor-spec",
+      "note": "",
+      "slug": "factor"
+    },
+    {
+      "glyph": "⌻",
+      "name": "polynomial",
+      "key": "Alt-q t",
+      "monad": "roots",
+      "dyad": "polyval",
+      "note": "",
+      "slug": "polynomial"
+    },
+    {
+      "glyph": "¿",
+      "name": "inverted-question",
+      "key": "Alt-/",
+      "monad": "roll",
+      "dyad": "deal",
+      "note": "",
+      "slug": "inverted-question"
+    },
+    {
+      "glyph": "∨",
+      "name": "or",
+      "key": "Alt-9",
+      "monad": "real-imag",
+      "dyad": "gcd",
+      "note": "",
+      "slug": "or"
+    },
+    {
+      "glyph": "∧",
+      "name": "and",
+      "key": "Alt-0",
+      "monad": "polar",
+      "dyad": "lcm",
+      "note": "",
+      "slug": "and"
+    },
+    {
+      "glyph": "⍲",
+      "name": "nand",
+      "key": "Alt-0 ~",
+      "monad": "square",
+      "dyad": "nand",
+      "note": "",
+      "slug": "nand"
+    },
+    {
+      "glyph": "⍱",
+      "name": "nor",
+      "key": "Alt-9 ~",
+      "monad": "double",
+      "dyad": "nor",
+      "note": "",
+      "slug": "nor"
+    },
+    {
+      "glyph": "~",
+      "name": "tilde",
+      "key": "",
+      "monad": "not",
+      "dyad": "without",
+      "note": "",
+      "slug": "tilde"
+    },
+    {
+      "glyph": "=",
+      "name": "equal",
+      "key": "",
+      "monad": "classify",
+      "dyad": "equal",
+      "note": "",
+      "slug": "equal"
+    },
+    {
+      "glyph": "≠",
+      "name": "not-equal",
+      "key": "Alt-Shift-=",
+      "monad": "unique-mask",
+      "dyad": "not-equal",
+      "note": "",
+      "slug": "not-equal"
+    },
+    {
+      "glyph": "<",
+      "name": "less",
+      "key": "",
+      "monad": "—",
+      "dyad": "less",
+      "note": "",
+      "slug": "less"
+    },
+    {
+      "glyph": "≤",
+      "name": "less-or-equal",
+      "key": "Alt-<",
+      "monad": "decrement",
+      "dyad": "less-equal",
+      "note": "",
+      "slug": "less-or-equal"
+    },
+    {
+      "glyph": ">",
+      "name": "greater",
+      "key": "",
+      "monad": "—",
+      "dyad": "greater",
+      "note": "",
+      "slug": "greater"
+    },
+    {
+      "glyph": "≥",
+      "name": "greater-or-equal",
+      "key": "Alt->",
+      "monad": "increment",
+      "dyad": "greater-equal",
+      "note": "",
+      "slug": "greater-or-equal"
+    },
+    {
+      "glyph": "≡",
+      "name": "match",
+      "key": "Alt-=",
+      "monad": "depth",
+      "dyad": "match",
+      "note": "",
+      "slug": "match"
+    },
+    {
+      "glyph": "≢",
+      "name": "tally",
+      "key": "Alt-= /",
+      "monad": "tally",
+      "dyad": "not-match",
+      "note": "",
+      "slug": "tally"
+    },
+    {
+      "glyph": "⍴",
+      "name": "rho",
+      "key": "Alt-r",
+      "monad": "shape",
+      "dyad": "reshape",
+      "note": "",
+      "slug": "rho"
+    },
+    {
+      "glyph": ",",
+      "name": "comma",
+      "key": "",
+      "monad": "ravel",
+      "dyad": "catenate",
+      "note": "",
+      "slug": "comma"
+    },
+    {
+      "glyph": "⍪",
+      "name": "table",
+      "key": "Alt-Minus ,",
+      "monad": "table",
+      "dyad": "catenate-first",
+      "note": "",
+      "slug": "table"
+    },
+    {
+      "glyph": "⌽",
+      "name": "reverse",
+      "key": "Alt-|",
+      "monad": "reverse",
+      "dyad": "rotate",
+      "note": "",
+      "slug": "reverse"
+    },
+    {
+      "glyph": "⊖",
+      "name": "reverse-first",
+      "key": "Alt-o Minus",
+      "monad": "reverse-first",
+      "dyad": "rotate-first",
+      "note": "",
+      "slug": "reverse-first"
+    },
+    {
+      "glyph": "⍉",
+      "name": "transpose",
+      "key": "Alt-o \\",
+      "monad": "transpose",
+      "dyad": "reorder-axes",
+      "note": "",
+      "slug": "transpose"
+    },
+    {
+      "glyph": "↑",
+      "name": "take",
+      "key": "Alt-k",
+      "monad": "first",
+      "dyad": "take",
+      "note": "",
+      "slug": "take"
+    },
+    {
+      "glyph": "↓",
+      "name": "drop",
+      "key": "Alt-j",
+      "monad": "split",
+      "dyad": "drop",
+      "note": "",
+      "slug": "drop"
+    },
+    {
+      "glyph": "↕",
+      "name": "windows",
+      "key": "Alt-k j",
+      "monad": "—",
+      "dyad": "windows",
+      "note": "",
+      "slug": "windows"
+    },
+    {
+      "glyph": "⊂",
+      "name": "enclose",
+      "key": "Alt-z",
+      "monad": "enclose",
+      "dyad": "partitioned-enclose",
+      "note": "",
+      "slug": "enclose"
+    },
+    {
+      "glyph": "⊆",
+      "name": "nest",
+      "key": "Alt-z _",
+      "monad": "nest",
+      "dyad": "partition",
+      "note": "",
+      "slug": "nest"
+    },
+    {
+      "glyph": "⊃",
+      "name": "mix",
+      "key": "Alt-x",
+      "monad": "mix",
+      "dyad": "pick",
+      "note": "",
+      "slug": "mix"
+    },
+    {
+      "glyph": "⌷",
+      "name": "squad",
+      "key": "Alt-q",
+      "monad": "",
+      "dyad": "materialise / index",
+      "note": "",
+      "slug": "squad"
+    },
+    {
+      "glyph": "⍳",
+      "name": "iota",
+      "key": "Alt-i",
+      "monad": "iota",
+      "dyad": "index-of",
+      "note": "",
+      "slug": "iota"
+    },
+    {
+      "glyph": ":",
+      "name": "colon",
+      "key": "",
+      "monad": "unkey",
+      "dyad": "keyed",
+      "note": "",
+      "slug": "colon"
+    },
+    {
+      "glyph": "⍸",
+      "name": "where",
+      "key": "Alt-i _",
+      "monad": "where",
+      "dyad": "interval-index",
+      "note": "",
+      "slug": "where"
+    },
+    {
+      "glyph": "∊",
+      "name": "member",
+      "key": "Alt-e",
+      "monad": "enlist",
+      "dyad": "member",
+      "note": "",
+      "slug": "member"
+    },
+    {
+      "glyph": "∪",
+      "name": "union",
+      "key": "Alt-v",
+      "monad": "unique",
+      "dyad": "union",
+      "note": "",
+      "slug": "union"
+    },
+    {
+      "glyph": "∩",
+      "name": "intersection",
+      "key": "Alt-c",
+      "monad": "—",
+      "dyad": "intersection",
+      "note": "",
+      "slug": "intersection"
+    },
+    {
+      "glyph": "⍷",
+      "name": "find",
+      "key": "Alt-e _",
+      "monad": "—",
+      "dyad": "find",
+      "note": "",
+      "slug": "find"
+    },
+    {
+      "glyph": "⍋",
+      "name": "grade-up",
+      "key": "Alt-7",
+      "monad": "",
+      "dyad": "grade-up",
+      "note": "",
+      "slug": "grade-up"
+    },
+    {
+      "glyph": "⍒",
+      "name": "grade-down",
+      "key": "Alt-g",
+      "monad": "",
+      "dyad": "grade-down",
+      "note": "",
+      "slug": "grade-down"
+    },
+    {
+      "glyph": "#",
+      "name": "hash",
+      "key": "",
+      "monad": "—",
+      "dyad": "replicate",
+      "note": "",
+      "slug": "hash"
+    },
+    {
+      "glyph": "⊤",
+      "name": "encode",
+      "key": "Alt-n",
+      "monad": "binary-encode",
+      "dyad": "encode",
+      "note": "",
+      "slug": "encode"
+    },
+    {
+      "glyph": "⊥",
+      "name": "decode",
+      "key": "Alt-b",
+      "monad": "binary-decode",
+      "dyad": "decode",
+      "note": "",
+      "slug": "decode"
+    },
+    {
+      "glyph": "⌹",
+      "name": "domino",
+      "key": "Alt-q u",
+      "monad": "inverse",
+      "dyad": "matrix-divide",
+      "note": "",
+      "slug": "domino"
+    },
+    {
+      "glyph": "⊣",
+      "name": "left",
+      "key": "Alt-;",
+      "monad": "same-left",
+      "dyad": "left",
+      "note": "",
+      "slug": "left"
+    },
+    {
+      "glyph": "⊢",
+      "name": "right",
+      "key": "Alt-'",
+      "monad": "same",
+      "dyad": "right",
+      "note": "",
+      "slug": "right"
+    },
+    {
+      "glyph": "⍎",
+      "name": "execute",
+      "key": "Alt-b t",
+      "monad": "execute",
+      "dyad": "execute-in",
+      "note": "",
+      "slug": "execute"
+    },
+    {
+      "glyph": "⍕",
+      "name": "format",
+      "key": "Alt-n t",
+      "monad": "format",
+      "dyad": "format-spec",
+      "note": "",
+      "slug": "format"
+    },
+    {
+      "glyph": "/",
+      "name": "slash",
+      "key": "",
+      "monad": "",
+      "dyad": "Reduce / seeded reduce last",
+      "note": "",
+      "slug": "slash"
+    },
+    {
+      "glyph": "⌿",
+      "name": "slash-bar",
+      "key": "Alt-Minus /",
+      "monad": "",
+      "dyad": "Reduce / seeded reduce first",
+      "note": "",
+      "slug": "slash-bar"
+    },
+    {
+      "glyph": "⍀",
+      "name": "backslash-bar",
+      "key": "Alt-Minus \\",
+      "monad": "",
+      "dyad": "Scan / seeded scan first",
+      "note": "",
+      "slug": "backslash-bar"
+    },
+    {
+      "glyph": "¨",
+      "name": "each",
+      "key": "Alt-1",
+      "monad": "",
+      "dyad": "Each",
+      "note": "",
+      "slug": "each"
+    },
+    {
+      "glyph": "⍨",
+      "name": "commute",
+      "key": "Alt-1 ~",
+      "monad": "",
+      "dyad": "Self / commute / constant",
+      "note": "",
+      "slug": "commute"
+    },
+    {
+      "glyph": "↣",
+      "name": "before",
+      "key": "Alt-.",
+      "monad": "",
+      "dyad": "Before / bind left",
+      "note": "",
+      "slug": "before"
+    },
+    {
+      "glyph": "↢",
+      "name": "after",
+      "key": "Alt-,",
+      "monad": "",
+      "dyad": "After / bind right",
+      "note": "",
+      "slug": "after"
+    },
+    {
+      "glyph": "⍤",
+      "name": "rank",
+      "key": "Alt-1 t",
+      "monad": "",
+      "dyad": "Rank",
+      "note": "",
+      "slug": "rank"
+    },
+    {
+      "glyph": "∘",
+      "name": "atop",
+      "key": "Alt-t",
+      "monad": "",
+      "dyad": "Atop",
+      "note": "",
+      "slug": "atop"
+    },
+    {
+      "glyph": "⍠",
+      "name": "axis",
+      "key": "Alt-q :",
+      "monad": "",
+      "dyad": "Apply along axes",
+      "note": "",
+      "slug": "axis"
+    },
+    {
+      "glyph": "⍥",
+      "name": "over",
+      "key": "Alt-1 o",
+      "monad": "",
+      "dyad": "Over",
+      "note": "",
+      "slug": "over"
+    },
+    {
+      "glyph": ".",
+      "name": "dot",
+      "key": "",
+      "monad": "",
+      "dyad": "Inner product",
+      "note": "",
+      "slug": "dot"
+    },
+    {
+      "glyph": "⊗",
+      "name": "outer-product",
+      "key": "Alt-o m",
+      "monad": "",
+      "dyad": "Outer product",
+      "note": "",
+      "slug": "outer-product"
+    },
+    {
+      "glyph": "⌸",
+      "name": "key",
+      "key": "Alt-q =",
+      "monad": "",
+      "dyad": "Key",
+      "note": "",
+      "slug": "key"
+    },
+    {
+      "glyph": "⍣",
+      "name": "power",
+      "key": "Alt-1 *",
+      "monad": "",
+      "dyad": "Iterate / invert / fixed point",
+      "note": "",
+      "slug": "power"
+    },
+    {
+      "glyph": "⇄",
+      "name": "inverse-pair",
+      "key": "Alt-4",
+      "monad": "",
+      "dyad": "Attach explicit inverse",
+      "note": "",
+      "slug": "inverse-pair"
+    },
+    {
+      "glyph": "⊘",
+      "name": "valences",
+      "key": "Alt-o /",
+      "monad": "",
+      "dyad": "Call with one/two arguments",
+      "note": "",
+      "slug": "valences"
+    },
+    {
+      "glyph": "⌾",
+      "name": "under",
+      "key": "Alt-o t",
+      "monad": "",
+      "dyad": "Apply under",
+      "note": "",
+      "slug": "under"
+    },
+    {
+      "glyph": "∂",
+      "name": "derivative",
+      "key": "Alt-f",
+      "monad": "",
+      "dyad": "Gradient / VJP",
+      "note": "",
+      "slug": "derivative"
+    },
+    {
+      "glyph": "⍚",
+      "name": "agenda",
+      "key": "Alt-` _",
+      "monad": "",
+      "dyad": "Select and call one function",
+      "note": "",
+      "slug": "agenda"
+    },
+    {
+      "glyph": "@",
+      "name": "at",
+      "key": "",
+      "monad": "",
+      "dyad": "Functional amend",
+      "note": "",
+      "slug": "at"
+    },
+    {
+      "glyph": "⌺",
+      "name": "stencil",
+      "key": "Alt-q `",
+      "monad": "",
+      "dyad": "Stencil",
+      "note": "",
+      "slug": "stencil"
+    },
+    {
+      "glyph": "←",
+      "name": "assign",
+      "key": "Alt-h",
+      "monad": "",
+      "dyad": "Assignment",
+      "note": "",
+      "slug": "assign"
+    },
+    {
+      "glyph": "→",
+      "name": "pipe",
+      "key": "Alt-l",
+      "monad": "",
+      "dyad": "Left-to-right application",
+      "note": "",
+      "slug": "pipe"
+    },
+    {
+      "glyph": "⍺",
+      "name": "alpha",
+      "key": "Alt-a",
+      "monad": "",
+      "dyad": "Left argument",
+      "note": "",
+      "slug": "alpha"
+    },
+    {
+      "glyph": "⍵",
+      "name": "omega",
+      "key": "Alt-w",
+      "monad": "",
+      "dyad": "Right argument",
+      "note": "",
+      "slug": "omega"
+    },
+    {
+      "glyph": "⍶",
+      "name": "alpha-underbar",
+      "key": "Alt-a _",
+      "monad": "",
+      "dyad": "Left operand",
+      "note": "",
+      "slug": "alpha-underbar"
+    },
+    {
+      "glyph": "⍹",
+      "name": "omega-underbar",
+      "key": "Alt-w _",
+      "monad": "",
+      "dyad": "Right operand",
+      "note": "",
+      "slug": "omega-underbar"
+    },
+    {
+      "glyph": "∇",
+      "name": "del",
+      "key": "Alt-g",
+      "monad": "",
+      "dyad": "Function/operator self-reference",
+      "note": "",
+      "slug": "del"
+    },
+    {
+      "glyph": "⍢",
+      "name": "del-diaeresis",
+      "key": "Alt-1 g",
+      "monad": "",
+      "dyad": "Function/operator self-reference",
+      "note": "",
+      "slug": "del-diaeresis"
+    },
+    {
+      "glyph": "?",
+      "name": "question",
+      "key": "",
+      "monad": "",
+      "dyad": "Predicate",
+      "note": "",
+      "slug": "question"
+    },
+    {
+      "glyph": "::",
+      "name": "error-guard",
+      "key": "",
+      "monad": "",
+      "dyad": "Error guard",
+      "note": "",
+      "slug": "error-guard"
+    },
+    {
+      "glyph": "⋄",
+      "name": "diamond",
+      "key": "Alt-`",
+      "monad": "",
+      "dyad": "Statement/row separator",
+      "note": "",
+      "slug": "diamond"
+    },
+    {
+      "glyph": "⍝",
+      "name": "comment",
+      "key": "Alt-c t",
+      "monad": "",
+      "dyad": "Comment",
+      "note": "",
+      "slug": "comment"
+    },
+    {
+      "glyph": "⎕",
+      "name": "quad",
+      "key": "Alt-q",
+      "monad": "",
+      "dyad": "Explicit output/input",
+      "note": "",
+      "slug": "quad"
+    },
+    {
+      "glyph": "•",
+      "name": "bullet",
+      "key": "Alt-y",
+      "monad": "",
+      "dyad": "System function prefix",
+      "note": "",
+      "slug": "bullet"
+    },
+    {
+      "glyph": "⍬",
+      "name": "zilde",
+      "key": "Alt-Shift-0",
+      "monad": "",
+      "dyad": "Empty numeric vector",
+      "note": "",
+      "slug": "zilde"
+    },
+    {
+      "glyph": "¯",
+      "name": "overbar",
+      "key": "Alt-Minus",
+      "monad": "",
+      "dyad": "Negative literal sign",
+      "note": "",
+      "slug": "overbar"
+    },
+    {
+      "glyph": "∞",
+      "name": "infinity",
+      "key": "Alt-8",
+      "monad": "",
+      "dyad": "Real infinity",
+      "note": "",
+      "slug": "infinity"
+    },
+    {
+      "glyph": "²",
+      "name": "superscript",
+      "key": "Alt-6",
+      "monad": "",
+      "dyad": "Postfix exponent",
+      "note": "",
+      "slug": "superscript"
+    },
+    {
+      "glyph": "⁻¹",
+      "name": "superscript inverse",
+      "key": "Alt-6 -1",
+      "monad": "",
+      "dyad": "Inverse",
+      "note": "",
+      "slug": "superscript-inverse"
+    },
+    {
+      "glyph": "ᵀ",
+      "name": "superscript transpose",
+      "key": "Alt-6 t",
+      "monad": "",
+      "dyad": "Transpose",
+      "note": "",
+      "slug": "superscript-transpose"
+    },
+    {
+      "glyph": "₁",
+      "name": "subscript",
+      "key": "Alt-5 1",
+      "monad": "",
+      "dyad": "Index/subscript",
+      "note": "",
+      "slug": "subscript"
+    }
+  ],
+  "keyboard": [
+    [
+      [
+        "`",
+        "⋄",
+        "¨"
+      ],
+      [
+        "1",
+        "¨",
+        ""
+      ],
+      [
+        "2",
+        "2",
+        ""
+      ],
+      [
+        "3",
+        "√",
+        ""
+      ],
+      [
+        "4",
+        "⇄",
+        ""
+      ],
+      [
+        "5",
+        "_",
+        ""
+      ],
+      [
+        "6",
+        "^",
+        ""
+      ],
+      [
+        "7",
+        "∆",
+        ""
+      ],
+      [
+        "8",
+        "∞",
+        ""
+      ],
+      [
+        "9",
+        "∨",
+        ""
+      ],
+      [
+        "0",
+        "⍬∧",
+        ""
+      ],
+      [
+        "-",
+        "¯",
+        ""
+      ],
+      [
+        "=",
+        "+≠≡",
+        ""
+      ],
+      [
+        "delete",
+        "Delete",
+        ""
+      ]
+    ],
+    [
+      [
+        "tab",
+        "Tab",
+        ""
+      ],
+      [
+        "q",
+        "⎕",
+        ""
+      ],
+      [
+        "w",
+        "⍵",
+        ""
+      ],
+      [
+        "e",
+        "∊",
+        ""
+      ],
+      [
+        "r",
+        "⍴",
+        ""
+      ],
+      [
+        "t",
+        "∘",
+        ""
+      ],
+      [
+        "y",
+        "•",
+        ""
+      ],
+      [
+        "u",
+        "÷",
+        ""
+      ],
+      [
+        "i",
+        "⍳",
+        ""
+      ],
+      [
+        "o",
+        "○",
+        ""
+      ],
+      [
+        "p",
+        "π",
+        ""
+      ],
+      [
+        "[",
+        "[",
+        ""
+      ],
+      [
+        "]",
+        "]",
+        ""
+      ],
+      [
+        "\\",
+        "⌽",
+        ""
+      ]
+    ],
+    [
+      [
+        "caps",
+        "Caps",
+        ""
+      ],
+      [
+        "a",
+        "⍺",
+        ""
+      ],
+      [
+        "s",
+        "⌈",
+        ""
+      ],
+      [
+        "d",
+        "⌊",
+        ""
+      ],
+      [
+        "f",
+        "∂",
+        ""
+      ],
+      [
+        "g",
+        "∇",
+        ""
+      ],
+      [
+        "h",
+        "←",
+        ""
+      ],
+      [
+        "j",
+        "↓",
+        ""
+      ],
+      [
+        "k",
+        "↑",
+        ""
+      ],
+      [
+        "l",
+        "→",
+        ""
+      ],
+      [
+        ";",
+        "⊣",
+        ""
+      ],
+      [
+        "'",
+        "⊢",
+        ""
+      ],
+      [
+        "enter",
+        "Enter",
+        ""
+      ]
+    ],
+    [
+      [
+        "shift",
+        "Shift",
+        ""
+      ],
+      [
+        "z",
+        "⊂",
+        ""
+      ],
+      [
+        "x",
+        "⊃",
+        ""
+      ],
+      [
+        "c",
+        "∩",
+        ""
+      ],
+      [
+        "v",
+        "∪",
+        ""
+      ],
+      [
+        "b",
+        "⊥",
+        ""
+      ],
+      [
+        "n",
+        "⊤",
+        ""
+      ],
+      [
+        "m",
+        "×",
+        ""
+      ],
+      [
+        ",",
+        "≤↢",
+        ""
+      ],
+      [
+        ".",
+        "≥↣",
+        ""
+      ],
+      [
+        "/",
+        "¿",
+        ""
+      ],
+      [
+        "shift2",
+        "Shift",
+        ""
+      ]
+    ],
+    [
+      [
+        "ctrl",
+        "Ctrl",
+        ""
+      ],
+      [
+        "opt",
+        "Opt",
+        ""
+      ],
+      [
+        "cmd",
+        "Cmd",
+        ""
+      ],
+      [
+        "space",
+        "Space",
+        ""
+      ],
+      [
+        "cmd2",
+        "Cmd",
+        ""
+      ],
+      [
+        "opt2",
+        "Opt",
+        ""
+      ],
+      [
+        "ctrl2",
+        "Ctrl",
+        ""
+      ]
+    ]
+  ],
+  "followups": [
+    [
+      "`",
+      "`⋄",
+      "_ / - → ⍚"
+    ],
+    [
+      "1",
+      "¨",
+      "t→⍤ · o→⍥ · *→⍣ · ~→⍨ · g→⍢"
+    ],
+    [
+      "5",
+      "_",
+      "0–9→₀–₉ · x→ₓ · j→ⱼ · e→ₑ · r→ᵣ · -0–9→₋₀–₉"
+    ],
+    [
+      "6",
+      "^",
+      "0–9→⁰–⁹ · -0–9→⁻⁰–⁹ · t→ᵀ · u→ᵘ"
+    ],
+    [
+      "7",
+      "∆",
+      "|/\\→⍋ · _/-→⍙"
+    ],
+    [
+      "9",
+      "∨",
+      "~/`→⍱"
+    ],
+    [
+      "0",
+      "∧",
+      "~/`→⍲"
+    ],
+    [
+      "-",
+      "¯",
+      ",→⍪ · \\→⍀ · /→⌿"
+    ],
+    [
+      "=",
+      "≡",
+      "/→≢"
+    ],
+    [
+      "q",
+      "⎕",
+      "t→⌻ · :/;→⍠ · =→⌸ · u→⌹ · |/\\→⌷ · `→⌺"
+    ],
+    [
+      "w",
+      "⍵",
+      "_/-→⍹"
+    ],
+    [
+      "e",
+      "∊",
+      "_/-→⍷"
+    ],
+    [
+      "i",
+      "⍳",
+      "_/-→⍸"
+    ],
+    [
+      "o",
+      "○",
+      "-→⊖ · \\→⍉ · /→⊘ · */8→⍟ · m→⊗ · u→⨸ · t→⌾"
+    ],
+    [
+      "\\",
+      "|",
+      "~/`→⍭"
+    ],
+    [
+      "a",
+      "⍺",
+      "_/-→⍶"
+    ],
+    [
+      "g",
+      "∇",
+      "|/\\→⍒"
+    ],
+    [
+      "k",
+      "↑",
+      "j→↕"
+    ],
+    [
+      "z",
+      "⊂",
+      "_/-→⊆"
+    ],
+    [
+      "c",
+      "∩",
+      "t→⍝"
+    ],
+    [
+      "b",
+      "⊥",
+      "t→⍎"
+    ],
+    [
+      "n",
+      "⊤",
+      "t→⍕"
+    ]
+  ],
+  "examples": {
+    "⍳": [
+      [
+        "Basic indices",
+        "⍳4",
+        "0 1 2 3"
+      ],
+      [
+        "Index-of",
+        "\"abc\"⍳\"cabz\"",
+        "[2 0 1 3]ₓ"
+      ],
+      [
+        "Coordinates",
+        "⍳2 2",
+        "[[0 0] [0 1] ⋄ [1 0] [1 1]]"
+      ]
+    ],
+    "⍴": [
+      [
+        "Shape",
+        "⍴2 3⍴0",
+        "[2 3]ₓ"
+      ],
+      [
+        "Reshape",
+        "2 3⍴1 2",
+        "[1 2 1 ⋄ 2 1 2]"
+      ],
+      [
+        "Keyed axes",
+        "\"month\"⌷⍴M",
+        "3ₓ"
+      ]
+    ],
+    "⍤": [
+      [
+        "Row sums",
+        "+/⍤1 m",
+        "3 12"
+      ],
+      [
+        "Rank zero",
+        "≢⍤0 v",
+        "[1 1]ₓ"
+      ]
+    ],
+    "∘": [
+      [
+        "Function composition",
+        "2 -∘+ 3",
+        "¯5"
+      ]
+    ],
+    "⍣": [
+      [
+        "Iterate",
+        "2×⍣3(1)",
+        "8"
+      ],
+      [
+        "Fixed point",
+        "n⍣∞(1)",
+        "1.414213562373095"
+      ]
+    ],
+    "⍺": [
+      [
+        "Left argument",
+        "{⍺+⍵} 2 3",
+        "5"
+      ]
+    ],
+    "⍵": [
+      [
+        "Right argument",
+        "{⍵×2} 5",
+        "10"
+      ]
+    ],
+    "⌽": [
+      [
+        "Reverse",
+        "⌽1 2 3",
+        "3 2 1"
+      ]
+    ],
+    "↑": [
+      [
+        "First",
+        "↑1 2 3",
+        "1"
+      ]
+    ],
+    "↓": [
+      [
+        "Drop",
+        "2↓1 2 3 4",
+        "3 4"
+      ]
+    ],
+    "⊂": [
+      [
+        "Enclose",
+        "⊂1 2 3",
+        "a nested array"
+      ]
+    ],
+    "∪": [
+      [
+        "Unique",
+        "∪1 2 1 3",
+        "1 2 3"
+      ]
+    ],
+    "∩": [
+      [
+        "Intersection",
+        "1 2 3 ∩ 2 3 4",
+        "2 3"
+      ]
+    ],
+    "⊤": [
+      [
+        "Encode",
+        "2 2 ⊤ 3",
+        "[1 1]"
+      ]
+    ],
+    "⊥": [
+      [
+        "Decode",
+        "2 ⊥ 1 1",
+        "3"
+      ]
+    ],
+    "÷": [
+      [
+        "Reciprocal",
+        "÷4",
+        "0.25"
+      ]
+    ],
+    "√": [
+      [
+        "Square root",
+        "√9",
+        "3"
+      ]
+    ],
+    "⌊": [
+      [
+        "Floor",
+        "⌊3.7",
+        "3"
+      ]
+    ],
+    "⌈": [
+      [
+        "Ceiling",
+        "⌈3.2",
+        "4"
+      ]
+    ]
+  }
+}
