@@ -230,7 +230,9 @@ function handle(request: KernelRequest): void {
   }
 
   if (request.header?.msg_type === 'execute_request') {
-    execute(request);
+    // KernelRequest is intentionally protocol-generic; narrow it only at the
+    // protocol dispatch boundary before entering the execute handler.
+    execute(request as ExecuteRequest);
   }
 }
 
