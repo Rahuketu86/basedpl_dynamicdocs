@@ -16,6 +16,10 @@ if "<!doctype html>" not in html.lower():
 if "BasedPL" not in html:
     raise SystemExit("BasedPL reference content is missing.")
 
+REF_DATA = ROOT / "reference-data.json"
+if not REF_DATA.exists():
+    raise SystemExit(f"Missing reference data: {REF_DATA}")
+
 # Give every deployed WASM bundle a unique URL. This avoids stale mobile-browser
 # caches serving an older worker/JS/WASM combination after a Pages deployment.
 version = os.environ.get("GITHUB_SHA", "dev")[:12]
@@ -31,6 +35,7 @@ for path in DIST.iterdir():
         shutil.rmtree(path)
 
 (DIST / "index.html").write_text(html, encoding="utf-8")
+shutil.copy2(REF_DATA, DIST / "reference-data.json")
 
 # The WASM bundle is produced by CI before this script runs.
 WASM_BUILD = ROOT / "build" / "bpl"
