@@ -359,13 +359,25 @@ async function addCell(
   const source = typeof input.source === 'string' ? input.source : '';
   const before = typeof input.before === 'string' ? input.before : null;
   const after = typeof input.after === 'string' ? input.after : null;
+  const position = typeof input.position === 'string' ? input.position : null;
   if (before && after) throw new Error('INVALID_REQUEST: provide before or after, not both');
+  if (position && position !== 'end') throw new Error("INVALID_REQUEST: position must be 'end'");
+  if ((position === 'end' && (before || after))) throw new Error('INVALID_REQUEST: position=end cannot be combined with before or after');
 
   const previousActive = selectedActiveId(notebook);
   const cells = Array.from(notebook.model!.cells);
   let insertedIndex = cells.length;
 
-  if (before) {
+  if (position === 'end') {
+    insertedIndex = cells.length;
+    if (cells.length) {
+      const anchor = cellWidget(notebook, cells[cells.length - 1].id);
+      notebook.select(anchor);
+      NotebookActions.insertBelow(notebook);
+    } else {
+      NotebookActions.insertBelow(notebook);
+    }
+  } else if (before) {
     insertedIndex = cellIndex(notebook, before);
     const anchor = cellWidget(notebook, before);
     notebook.select(anchor);
@@ -399,7 +411,7 @@ async function addCell(
   const actualIndex = notebook.activeCellIndex;
   const result = await cellSummary(created.model, actualIndex, true, false);
   let execution: Record<string, unknown> | null = null;
-  if (input.run_after_add === true && created.model.type === 'code') {
+  if (input.run_after_add === true) {
     execution = await runCells(panel, notebook, [created.model.id]);
   }
   restoreActive(notebook, previousActive);
@@ -524,11 +536,18 @@ async function runCells(
       const ok = await NotebookActions.run(notebook, panel.sessionContext);
       const index = cellIndex(notebook, id);
       const cell = notebook.model!.cells.get(index);
+      if (cell.type !== 'code') {
+        // JupyterLab's run action renders markdown; raw has no kernel output,
+        // so refresh the widget and return its source as the render result.
+        widget.update();
+      }
       results.push({
         id,
         ok,
         type: cell.type,
         execution_count: cell.type === 'code' ? (cell.toJSON() as any).execution_count ?? null : null,
+        rendered: cell.type !== 'code',
+        source: cell.type !== 'code' ? truncate(textOf(cell), MAX_RETURNED_SOURCE) : undefined,
         outputs: cell.type === 'code'
           ? ((cell.toJSON() as any).outputs ?? []).map(outputSummary)
           : []
@@ -566,9 +585,10 @@ const schemas = {
     properties: {
       source: { type: 'string' },
       type: { type: 'string', enum: ['code', 'markdown', 'raw'] },
-      before: { type: 'string' },
-      after: { type: 'string' },
-      run_after_add: { type: 'boolean', description: 'Run the newly added code cell immediately after insertion.' }
+      before: { type: 'string', description: 'Stable cell id to insert before.' },
+      after: { type: 'string', description: 'Stable cell id to insert after.' },
+      position: { type: 'string', enum: ['end'], description: 'Use end to append after the final cell.' },
+      run_after_add: { type: 'boolean', description: 'Run/render the newly added cell immediately after insertion. Code executes; markdown/raw cells are rendered/refreshed.' }
     },
     required: ['source'],
     additionalProperties: false
@@ -629,25 +649,34 @@ export async function registerBasedPLWebMCP(
   const modelContext = (document as WebMCPDocument).modelContext;
   const status = document.createElement('div');
   status.id = 'basedpl-webmcp-status';
-  status.setAttribute('aria-live', 'polite');
+  status.setAttribute('aria-label', 'BasedPL WebMCP tools status');
+  status.title = 'BasedPL WebMCP tools';
   Object.assign(status.style, {
     position: 'fixed',
     right: '12px',
     bottom: '12px',
     zIndex: '2147483647',
-    maxWidth: '420px',
-    padding: '10px 12px',
-    borderRadius: '8px',
-    border: '1px solid #bbb',
-    background: 'rgba(255,255,255,.96)',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '6px',
+    padding: '5px 9px',
+    borderRadius: '999px',
+    border: '1px solid rgba(0,0,0,.14)',
+    background: 'rgba(255,255,255,.94)',
     color: '#222',
-    font: '12px/1.4 -apple-system,BlinkMacSystemFont,sans-serif',
-    boxShadow: '0 3px 14px rgba(0,0,0,.18)',
-    whiteSpace: 'pre-wrap'
+    font: '12px/1 -apple-system,BlinkMacSystemFont,sans-serif',
+    boxShadow: '0 2px 10px rgba(0,0,0,.12)',
+    userSelect: 'none'
   });
+  const dot = document.createElement('span');
+  dot.textContent = '●';
+  dot.setAttribute('aria-hidden', 'true');
+  const label = document.createElement('span');
+  label.textContent = 'Tools';
+  status.append(dot, label);
   const setStatus = (message: string, ok = true) => {
-    status.textContent = message;
-    status.style.borderColor = ok ? '#2e7d32' : '#c62828';
+    status.title = message;
+    dot.style.color = ok ? '#2e7d32' : '#c62828';
   };
 
   document.getElementById('basedpl-webmcp-status')?.remove();
@@ -675,6 +704,7 @@ export async function registerBasedPLWebMCP(
       const kernel = panel.sessionContext.session?.kernel;
       return {
         surface: 'jupyterlite-notebook',
+        description: 'Live BasedPL JupyterLite notebook. Use stable cell ids for edits and inspect cells before changing unfamiliar content.',
         notebook: {
           title: panel.title.label,
           cell_count: notebook.model!.cells.length,
@@ -685,17 +715,18 @@ export async function registerBasedPLWebMCP(
           status: kernel?.status ?? 'unknown'
         },
         instructions: workspaceInstructions,
-        available_tools: [
-          'basedpl_workspace',
-          'basedpl_search',
-          'notebook_view',
-          'notebook_find',
-          'notebook_add',
-          'notebook_edit',
-          'notebook_delete',
-          'notebook_move',
-          'notebook_run'
-        ]
+        tools: [
+          { name: 'basedpl_workspace', use: 'Refresh the live notebook state, collaboration instructions, and tool contract.' },
+          { name: 'basedpl_search', use: 'Search BasedPL glyph/language documentation; prefer this over navigating away for reference questions.' },
+          { name: 'notebook_view', use: 'Inspect cells by stable id, optionally including source and outputs.' },
+          { name: 'notebook_find', use: 'Find cells by text and get neighboring cell context.' },
+          { name: 'notebook_add', use: 'Insert a code, markdown, or raw cell before a cell, after a cell, or at the end with position=end; optionally run it.' },
+          { name: 'notebook_edit', use: 'Edit an existing cell by stable id using targeted text operations or change its type.' },
+          { name: 'notebook_delete', use: 'Delete one or more cells by stable id.' },
+          { name: 'notebook_move', use: 'Move one cell before or after another stable cell id.' },
+          { name: 'notebook_run', use: 'Run code cells and render markdown/raw cells; return execution or render results.' }
+        ],
+        workflow: 'For edits, inspect/find first, then edit/add/move, and run when requested or clearly implied. Use position=end when the user says after the last cell.'
       };
     }
   }, { signal: controller.signal });
@@ -791,7 +822,7 @@ export async function registerBasedPLWebMCP(
   await modelContext.registerTool({
     name: 'notebook_add',
     title: 'Add notebook cell',
-    description: 'Add a code, markdown, or raw cell before/after a stable cell id. Changes the real user notebook.',
+    description: 'Add a code, markdown, or raw cell before/after a stable cell id, or append at the end with position=end. Changes the real user notebook.',
     inputSchema: schemas.add,
     annotations: { readOnlyHint: false, consequentialHint: true, untrustedContentHint: true },
     execute: async input => {
