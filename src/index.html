@@ -473,8 +473,11 @@ function resetBplSession(){
 const rootWebMCPStatus=()=>{
  let el=document.getElementById('basedpl-webmcp-status');
  if(!el){
-  el=document.createElement('div');el.id='basedpl-webmcp-status';el.setAttribute('aria-live','polite');
-  Object.assign(el.style,{position:'fixed',right:'12px',bottom:'12px',zIndex:'2147483647',maxWidth:'360px',padding:'10px 12px',borderRadius:'8px',border:'1px solid #bbb',background:'rgba(255,255,255,.96)',color:'#222',font:'12px/1.4 -apple-system,BlinkMacSystemFont,sans-serif',boxShadow:'0 3px 14px rgba(0,0,0,.18)',whiteSpace:'pre-wrap'});
+  el=document.createElement('div');el.id='basedpl-webmcp-status';el.setAttribute('aria-label','BasedPL WebMCP tools status');el.title='BasedPL WebMCP tools';
+  Object.assign(el.style,{position:'fixed',right:'12px',bottom:'12px',zIndex:'2147483647',display:'inline-flex',alignItems:'center',gap:'6px',padding:'5px 9px',borderRadius:'999px',border:'1px solid rgba(0,0,0,.14)',background:'rgba(255,255,255,.94)',color:'#222',font:'12px/1 -apple-system,BlinkMacSystemFont,sans-serif',boxShadow:'0 2px 10px rgba(0,0,0,.12)',userSelect:'none'});
+  const dot=document.createElement('span');dot.textContent='●';dot.setAttribute('aria-hidden','true');
+  const label=document.createElement('span');label.textContent='Tools';
+  el.append(dot,label);el._statusDot=dot;
   document.body.appendChild(el);
  }
  return el;
@@ -529,7 +532,7 @@ async function registerRootWebMCP(){
  const mc=document.modelContext;
  const status=rootWebMCPStatus();
  if(!mc){status.textContent='WebMCP: document.modelContext unavailable';status.style.borderColor='#c62828';return;}
- const setStatus=(s,ok=true)=>{status.textContent=s;status.style.borderColor=ok?'#2e7d32':'#c62828';};
+ const setStatus=(s,ok=true)=>{status.title=s;status.style.borderColor='rgba(0,0,0,.14)';if(status._statusDot)status._statusDot.style.color=ok?'#2e7d32':'#c62828';};
  const controller=new AbortController();
 
  await mc.registerTool({
@@ -539,9 +542,19 @@ async function registerRootWebMCP(){
   annotations:{readOnlyHint:true,consequentialHint:false,untrustedContentHint:true},
   execute:async()=>({
    surface:document.body.classList.contains('repl-mode')?'repl':'reference',
+   description:'Live BasedPL reference/REPL workspace. Use basedpl_search for language reference and repl_* tools for the visible REPL.',
    repl_ready:bplReady,repl_busy:replBusy,
    instructions:ROOT_WORKSPACE_CONTRACT,
-   available_tools:['basedpl_workspace','basedpl_search','basedpl_eval','basedpl_reset','navigate','repl_view','repl_edit','repl_run']
+   tools:[
+    {name:'basedpl_workspace',use:'Refresh the current page/workspace state and tool contract.'},
+    {name:'basedpl_search',use:'Search BasedPL glyph/language documentation without navigating away.'},
+    {name:'basedpl_eval',use:'Evaluate BasedPL in the same persistent interpreter as the visible REPL.'},
+    {name:'basedpl_reset',use:'Reset that persistent BasedPL interpreter.'},
+    {name:'navigate',use:'Switch between Reference, REPL, and JupyterLite; the result includes the target workspace handoff.'},
+    {name:'repl_view',use:'Inspect the visible REPL input, cursor, busy state, and recent history.'},
+    {name:'repl_edit',use:'Edit the visible REPL input without executing it.'},
+    {name:'repl_run',use:'Execute the visible REPL input or supplied code.'}
+   ]
   })
  },{signal:controller.signal});
 
@@ -587,9 +600,43 @@ async function registerRootWebMCP(){
   annotations:{readOnlyHint:false,consequentialHint:false,untrustedContentHint:false},
   execute:async input=>{
    const target=String(input.target);
-   if(target==='repl'){history.replaceState(null,'','#repl');showRepl();return {target};}
-   if(target==='reference'){history.replaceState(null,'',location.pathname);showReference();return {target};}
-   if(target==='jupyterlite'){location.href='./jupyterlite/lab/index.html?path=basedpl-display-tests.ipynb';return {target};}
+   const workspace=()=>({
+    surface:target==='jupyterlite'?'jupyterlite-notebook':target,
+    description:target==='jupyterlite'
+      ?'Live BasedPL JupyterLite notebook. After navigation, basedpl_workspace exposes the live notebook state and collaboration contract.'
+      :'Live BasedPL '+target+' workspace.',
+    instructions:target==='jupyterlite'
+      ?['Use basedpl_workspace after the page loads to refresh live notebook state.','Use basedpl_search for BasedPL reference.','Use notebook_view/find before unfamiliar edits.','Use notebook_add with position=end when the user says after the last cell.','Use notebook_run for code execution or markdown/raw rendering.']
+      :ROOT_WORKSPACE_CONTRACT,
+    tools:target==='jupyterlite'
+      ?[
+       {name:'basedpl_workspace',use:'Describe the live notebook, kernel, instructions, and notebook tools.'},
+       {name:'basedpl_search',use:'Search BasedPL glyph/language documentation.'},
+       {name:'notebook_view',use:'Inspect stable cell ids, source, and outputs.'},
+       {name:'notebook_find',use:'Find cells and surrounding context.'},
+       {name:'notebook_add',use:'Insert before/after a cell or append with position=end; optionally run/render it.'},
+       {name:'notebook_edit',use:'Edit a cell by stable id.'},
+       {name:'notebook_delete',use:'Delete cells by stable id.'},
+       {name:'notebook_move',use:'Move a cell before/after another stable cell.'},
+       {name:'notebook_run',use:'Execute code or render markdown/raw cells.'}
+      ]
+      :[
+       {name:'basedpl_workspace',use:'Describe the current page and tool contract.'},
+       {name:'basedpl_search',use:'Search BasedPL documentation.'},
+       {name:'basedpl_eval',use:'Evaluate BasedPL in the persistent REPL interpreter.'},
+       {name:'basedpl_reset',use:'Reset the persistent REPL interpreter.'},
+       {name:'repl_view',use:'Inspect the visible REPL.'},
+       {name:'repl_edit',use:'Edit the visible REPL without executing.'},
+       {name:'repl_run',use:'Execute REPL code.'}
+      ]
+   });
+   if(target==='repl'){history.replaceState(null,'','#repl');showRepl();return {target,workspace:workspace()};}
+   if(target==='reference'){history.replaceState(null,'',location.pathname);showReference();return {target,workspace:workspace()};}
+   if(target==='jupyterlite'){
+    const result={target,workspace:workspace(),handoff:'The JupyterLite document has its own basedpl_workspace tool. Invoke it after navigation to refresh live notebook state.'};
+    location.href='./jupyterlite/lab/index.html?path=basedpl-display-tests.ipynb';
+    return result;
+   }
    throw new Error('INVALID_REQUEST: unknown navigation target');
   }
  },{signal:controller.signal});
@@ -640,17 +687,17 @@ async function registerRootWebMCP(){
  if(mc.getTools){
   try{
    const names=(await mc.getTools()).map(t=>t.name);
-   setStatus('WebMCP: registered ✓\n'+names.map(n=>'• '+n).join('\n'));
+   setStatus('WebMCP tools ready: '+names.join(', '),true);
    console.info('BasedPL root WebMCP tools',names);
   }catch(e){console.warn('BasedPL root WebMCP verification failed',e);setStatus('WebMCP: registered, verification failed',false);}
- } else setStatus('WebMCP: registered ✓\nbasedpl_eval\nbasedpl_reset\nnavigate\nrepl_view\nrepl_edit\nrepl_run');
+ } else setStatus('WebMCP tools registered',true);
  return controller;
 }
 
 void registerRootWebMCP().catch(error=>{
  const s=rootWebMCPStatus();
- s.textContent='WebMCP: registration failed\n'+String(error);
- s.style.borderColor='#c62828';
+ s.title='WebMCP registration failed: '+String(error);
+ if(s._statusDot)s._statusDot.style.color='#c62828';
 });
 </script>
 </body></html>
