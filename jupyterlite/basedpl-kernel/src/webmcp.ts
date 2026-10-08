@@ -155,7 +155,6 @@ const snapshot = async (
     : cells.map((cell, index) => ({ cell, index }));
 
   return {
-    path: notebook.model!.toJSON().metadata?.['path'] ?? null,
     cell_count: cells.length,
     active_cell_id: notebook.activeCell?.model.id ?? null,
     cells: await Promise.all(
@@ -379,7 +378,7 @@ async function moveCell(
 
   const destination = before ? target : target + 1;
   const to = destination > from ? destination - 1 : destination;
-  NotebookActions.moveCells(notebook, from, to, 1);
+  notebook.moveCell(from, to);
 
   return {
     id,
