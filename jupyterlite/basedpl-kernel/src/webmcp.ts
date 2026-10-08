@@ -681,8 +681,7 @@ export async function registerBasedPLWebMCP(
           read_only: Boolean(notebook.model?.readOnly)
         },
         kernel: {
-          status: kernel?.status ?? 'unknown',
-          name: kernel?.name ?? null
+          status: kernel?.status ?? 'unknown'
         },
         instructions: workspaceInstructions,
         available_tools: [
