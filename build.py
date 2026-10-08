@@ -41,6 +41,9 @@ if WASM_BUILD.exists():
         if path.is_file():
             shutil.copy2(path, target / path.name)
     shutil.copy2(ROOT / "web" / "worker.js", target / "worker.js")
+    vendor_src = ROOT / "web" / "vendor"
+    if vendor_src.exists():
+        shutil.copytree(vendor_src, target / "vendor", dirs_exist_ok=True)
 else:
     raise SystemExit(f"Missing WASM build: {WASM_BUILD}")
 

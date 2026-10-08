@@ -9,6 +9,12 @@ import { IMainMenu } from '@jupyterlab/mainmenu';
 import { Menu, Widget } from '@lumino/widgets';
 import { BasedPLKernel } from './kernel.js';
 import layout from './layout.js';
+import input from './input.js';
+// The visual Mac-keyboard grid's key-row shape, matching the REPL's own
+// `DATA.keyboard`. Not part of BasedPL's real vendored `layout.json` (which
+// only has option/alt_aliases/states/unshifted, for the chord engine) --
+// kept as its own file so re-vendoring layout.js never clobbers it again.
+import keyboardRowsData from './keyboard_rows.js';
 
 const kernel: JupyterFrontEndPlugin<void> = {
   id: '@rahuketu86/basedpl-kernel:kernel',
@@ -36,6 +42,7 @@ const kernel: JupyterFrontEndPlugin<void> = {
       create: async (options: IKernel.IOptions): Promise<IKernel> => {
         const instance = new BasedPLKernel(options);
         activeKernel = instance;
+        loadSymbols(instance);
         return instance;
       }
     });
@@ -45,154 +52,163 @@ const kernel: JupyterFrontEndPlugin<void> = {
     const macLayout = layout as any;
     type GlyphChoice = { glyph: string; name: string };
     type EditorAdapter = {
-      id: any; text: string; pos: number; empty: boolean;
+      id: any; text: string; pos: number; empty: boolean; bpl: boolean;
       rect: () => { left: number; bottom: number };
       insert: (text: string, from?: number) => void;
     };
+    // Generic contenteditable adapter, ported from the Chrome extension's
+    // content.js -- NOT reading CodeMirror's internal `EditorView`/`state`
+    // API (what this used to do, via `cell.editor.editor`). That earlier
+    // approach caused real, confirmed problems on this exact JupyterLite page
+    // during the extension's own development (see the saved
+    // `basedpl_extension` session): CodeMirror's live model can be out of
+    // step with what these handlers observe, in ways a plain `Selection`/
+    // `Range`-based reader never is, since that always reflects genuine
+    // browser cursor state rather than a framework's internal one. "Lines" =
+    // direct children of the editable root -- CodeMirror's one `div.cm-line`
+    // per line, matching `.cm-content`'s real DOM shape.
+    function lineLength(line: ChildNode): number {
+      return line.nodeType === Node.TEXT_NODE ? (line.nodeValue?.length ?? 0) : (line.textContent?.length ?? 0);
+    }
+    function serializeEditable(root: Element): string {
+      const lines = [...root.childNodes];
+      if (!lines.length) return root.textContent || '';
+      return lines.map(n => (n.nodeType === Node.TEXT_NODE ? n.nodeValue : n.textContent)).join('\n');
+    }
+    function offsetInEditable(root: Element, node: Node | null, nodeOffset: number): number {
+      if (node == null) return 0;
+      const lines = [...root.childNodes];
+      let total = 0;
+      for (const line of lines) {
+        if (line === node) {
+          let sub = 0;
+          for (let j = 0; j < nodeOffset && j < line.childNodes.length; j++) sub += lineLength(line.childNodes[j]);
+          return total + sub;
+        }
+        if ((line as Node) === node.parentNode || (node.nodeType === Node.TEXT_NODE && line.contains(node))) {
+          const r = document.createRange();
+          r.selectNodeContents(line);
+          try { r.setEnd(node, nodeOffset); } catch { return total; }
+          return total + r.toString().length;
+        }
+        total += lineLength(line) + 1; // +1 for the inferred '\n' between lines
+      }
+      return total;
+    }
+    function positionInEditable(root: Element, offset: number): { node: Node; offset: number } {
+      const lines = [...root.childNodes];
+      let remaining = offset;
+      for (const line of lines) {
+        const len = lineLength(line);
+        if (remaining <= len) {
+          if (line.nodeType === Node.TEXT_NODE) return { node: line, offset: remaining };
+          const walker = document.createTreeWalker(line, NodeFilter.SHOW_TEXT);
+          let node: Node | null, acc = 0;
+          while ((node = walker.nextNode())) {
+            if (remaining <= acc + (node.nodeValue?.length ?? 0)) return { node, offset: remaining - acc };
+            acc += node.nodeValue?.length ?? 0;
+          }
+          return { node: line, offset: line.childNodes.length };
+        }
+        remaining -= len + 1;
+      }
+      const lastLine = lines[lines.length - 1];
+      if (!lastLine) return { node: root, offset: 0 };
+      return lastLine.nodeType === Node.TEXT_NODE
+        ? { node: lastLine, offset: lastLine.nodeValue?.length ?? 0 }
+        : { node: lastLine, offset: lastLine.childNodes.length };
+    }
+    function insertAtSelection(text: string) {
+      if (!document.execCommand || !document.execCommand('insertText', false, text)) {
+        const sel = window.getSelection();
+        if (sel && sel.rangeCount) {
+          const range = sel.getRangeAt(0);
+          range.deleteContents();
+          range.insertNode(document.createTextNode(text));
+          range.collapse(false);
+        }
+      }
+    }
+    // `ed` is JupyterLab's `CodeEditor.IEditor` wrapper, used only for
+    // `readOnly`/`host` -- `root` is the real contenteditable DOM node
+    // (`.cm-content`) everything else reads and writes through directly.
+    function contentEditableAdapter(ed: any): EditorAdapter | null {
+      if (!ed || ed.readOnly) return null;
+      const root: Element | null = ed.host?.querySelector?.('.cm-content');
+      if (!root) return null;
+      const sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0) return null;
+      const pos = offsetInEditable(root, sel.focusNode, sel.focusOffset);
+      return {
+        id: root,
+        text: serializeEditable(root),
+        pos,
+        empty: sel.isCollapsed,
+        bpl: true,
+        rect: () => {
+          if (!sel.rangeCount) return { left: root.getBoundingClientRect().left, bottom: root.getBoundingClientRect().bottom };
+          const r = sel.getRangeAt(0).cloneRange();
+          r.collapse(false);
+          const rect = r.getClientRects()[0] || r.getBoundingClientRect();
+          return { left: rect.left, bottom: rect.bottom };
+        },
+        insert: (text: string, from?: number) => {
+          (root as HTMLElement).focus?.();
+          if (from != null) {
+            const start = positionInEditable(root, from), end = positionInEditable(root, pos);
+            const range = document.createRange();
+            range.setStart(start.node, start.offset);
+            range.setEnd(end.node, end.offset);
+            const s = window.getSelection();
+            s?.removeAllRanges();
+            if (s) s.addRange(range);
+          }
+          insertAtSelection(text);
+        }
+      };
+    }
+
     const last = { editor: null as EditorAdapter | null };
     const snapshotEditor = (): EditorAdapter | null => {
       const cell: any = notebookTracker.activeCell;
-      const ed: any = cell?.editor;
-      if (!ed || ed.readOnly) return last.editor;
-
-      // JupyterLab 4's CodeMirrorEditor exposes the underlying CodeMirror 6
-      // EditorView as `editor`. Capture its numeric document positions directly.
-      // This avoids JupyterLab's line/column -> CodeMirror conversion, which can
-      // produce an incomplete position after the floating keyboard takes focus.
-      const view: any = ed.editor;
-      if (!view?.state?.selection?.main) return last.editor;
-      const sel = view.state.selection.main;
-      let from = sel.from;
-      let to = sel.to;
-
-      return {
-        id: view,
-        text: view.state.doc.toString(),
-        pos: sel.head,
-        empty: sel.empty,
-        rect: () => {
-          const coords = view.coordsAtPos(sel.head);
-          return coords
-            ? { left: coords.left, bottom: coords.bottom }
-            : { left: ed.host.getBoundingClientRect().left, bottom: ed.host.getBoundingClientRect().bottom };
-        },
-        insert: (text: string, requestedFrom?: number) => {
-          const start = requestedFrom ?? from;
-          const end = requestedFrom === undefined ? to : to;
-          view.dispatch({
-            changes: { from: start, to: end, insert: text },
-            selection: { anchor: start + text.length },
-            userEvent: 'input.complete'
-          });
-          from = start + text.length;
-          to = from;
-          view.focus();
-        }
-      };
+      return contentEditableAdapter(cell?.editor) ?? last.editor;
     };
     let active: { id: any; start: number } | undefined;
     let choice: { editor: EditorAdapter; start: number; found: GlyphChoice[] } | undefined;
-    let leftAlt = false, rightAlt = false, keyInput = false, pending: string | null = null;
-    const glyphNames: Record<string, string> = {
-      '√':'sqrt','∞':'infinity','⍬':'zilde','⍴':'rho','∘':'jot','÷':'divide','π':'pi','≠':'not-equal',
-      '⌈':'ceiling','⌊':'floor','←':'left-arrow','↓':'down-arrow','↑':'take','→':'right-arrow',
-      '⊣':'left-tack','⊢':'right-tack','⊃':'pick','∩':'intersection','∪':'union','×':'multiply',
-      '⌽':'reverse','⍺':'alpha','⍵':'omega','⍳':'iota','∊':'epsilon','⎕':'quad','∇':'del',
-      '∆':'delta','⍉':'transpose','⊖':'rotate','⍋':'grade-up','⍒':'grade-down','⍪':'catenate',
-      '⌿':'replicate','⍀':'expand','⍸':'iota-underbar','⍷':'epsilon-underbar','⌷':'squad',
-      '⌺':'quad-diamond','⌸':'quad-equal','⌹':'quad-divide','⍠':'quad-colon','⍟':'power',
-      '⊗':'outer-product','⊘':'divide-bar','⌾':'circle-bar','⨸':'divide-circle','⍭':'stile-tilde',
-      '⍶':'alpha-underbar','⍹':'omega-underbar','⍢':'del-diaeresis','⍤':'diaeresis-jot','⍥':'diaeresis-circle',
-      '⍣':'power-diaeresis','⍨':'commute','⍲':'nand','⍱':'nor','¯':'overbar','⋄':'diamond',
-      '⍎':'execute','⍕':'format'
-    };
+    let leftAlt = false, rightAlt = false, keyInput = false;
 
-    function usKey(ev: KeyboardEvent): string | undefined {
-      const code = ev.code;
-      if (/^Key[A-Z]$/.test(code)) return ev.shiftKey ? code.slice(3) : code.slice(3).toLowerCase();
-      if (/^Digit[0-9]$/.test(code)) return ev.shiftKey ? ')!@#$%^&*('[Number(code[5])] : code[5];
-      const p: Record<string, string> = {
-        Backquote: String.fromCharCode(96) + '~', Minus: '-_', Equal: '=+',
-        BracketLeft: '[{', BracketRight: ']}', Backslash: '\\\\|', Semicolon: ';:',
-        Quote: "'\"", Comma: ',<', Period: '.>', Slash: '/?'
-      };
-      return p[code]?.[Number(ev.shiftKey)];
+    // The real chord/completion engine (BasedPL's own vendored `input.js`),
+    // loaded once the active kernel reports its real symbol table -- see
+    // `loadSymbols` below. Replaces the hand-ported `usKey()`/`press()` that
+    // used to live here (a manual re-port of this exact logic, which drifted
+    // from the real symbol set); `bplInput.reset()` replaces the old
+    // module-level `pending` dead-key-state variable.
+    // Typed `any`: this is the vendored upstream `input.js`'s factory output,
+    // not our own code -- see `jupyterlite/basedpl-kernel/src/input.js`.
+    let bplInput: any = null;
+    const glyphNames = new Map<string, string>();
+
+    function refreshGlyphTitles() {
+      host.querySelectorAll<HTMLElement>('[data-glyph]').forEach(el => {
+        const glyph = el.dataset.glyph;
+        if (glyph && glyphNames.has(glyph)) el.title = glyphNames.get(glyph) as string;
+      });
     }
 
-    function press(ev: KeyboardEvent, option: boolean): { text: string; stop: boolean } | undefined {
-      const key = usKey(ev);
-      const plain = !ev.altKey && !ev.ctrlKey && !ev.metaKey;
-      const action = option && ev.altKey && !ev.ctrlKey && !ev.metaKey
-        ? (macLayout.alt_aliases?.[ev.key] ?? (key ? macLayout.option?.[key] : null) ??
-          (Object.values(macLayout.alt_aliases ?? {}).includes(key) ? key : null))
-        : null;
-      if (pending) {
-        const stateName = pending;
-        const state = macLayout.states[stateName as string] as any;
-        const repeated = action?.state === stateName;
-        pending = null;
-        if (repeated) return { text: state.terminator, stop: true };
-        if (plain && ev.key === ' ') return { text: state.terminator, stop: true };
-        if (ev.key === 'Backspace' || ev.key === 'Escape') return { text: '', stop: true };
-        if (plain && key) {
-          const next = state.keys[key as string];
-          if (next === undefined) {
-            const rest = press(ev, option);
-            return { text: state.terminator + (rest?.text ?? ''), stop: rest?.stop ?? false };
-          }
-          if (typeof next === 'string') return { text: next, stop: true };
-          pending = next.state;
-          return { text: '', stop: true };
-        }
-        const rest = press(ev, option);
-        return { text: state.terminator + (rest?.text ?? ''), stop: rest?.stop ?? false };
-      }
-      if (action) {
-        if (typeof action === 'string') return { text: action, stop: true };
-        pending = action.state;
-        return { text: '', stop: true };
-      }
-      return undefined;
+    function loadSymbols(kernelInstance: BasedPLKernel) {
+      kernelInstance.getSymbols()
+        .then(rows => {
+          glyphNames.clear();
+          for (const row of rows) glyphNames.set(row.glyph, row.name);
+          bplInput = input(rows, macLayout);
+          refreshGlyphTitles();
+        })
+        .catch(err => console.error('BasedPL: failed to load the symbol table from the kernel', err));
     }
 
     function editor(): EditorAdapter | null {
       const cell: any = notebookTracker.activeCell;
-      const ed: any = cell?.editor;
-      if (!ed || ed.readOnly) return null;
-      const cursor = ed.getCursorPosition?.();
-      if (!cursor) return null;
-      const selection = ed.getSelection?.();
-      const pos = ed.getOffsetAt(cursor);
-      const from = selection ? ed.getOffsetAt(selection.start) : pos;
-      const to = selection ? ed.getOffsetAt(selection.end) : pos;
-      return {
-        id: ed,
-        text: ed.model.sharedModel.getSource(),
-        pos,
-        empty: from === to,
-        rect: () => {
-          const cursorEl = ed.host.querySelector?.('.cm-cursor, .cm-cursor-primary, .cm-cursorLayer > *');
-          const cursorRect = cursorEl?.getBoundingClientRect?.();
-          if (cursorRect && cursorRect.width >= 0) return { left: cursorRect.left, bottom: cursorRect.bottom };
-          const coordinate = ed.getCoordinateForPosition?.(ed.getCursorPosition());
-          if (coordinate) {
-            const hostRect = ed.host.getBoundingClientRect();
-            const left = coordinate.left >= hostRect.left ? coordinate.left : hostRect.left + coordinate.left;
-            const bottom = coordinate.bottom >= hostRect.top ? coordinate.bottom : hostRect.top + coordinate.bottom;
-            return { left, bottom };
-          }
-          const r = ed.host.getBoundingClientRect();
-          return { left: r.left, bottom: r.bottom };
-        },
-        insert: (text: string, fromOffset = from) => {
-          const currentCursor = ed.getCursorPosition();
-          const currentSelection = ed.getSelection?.();
-          const endOffset = currentSelection ? ed.getOffsetAt(currentSelection.end) : ed.getOffsetAt(currentCursor);
-          ed.setSelection(ed.getPositionAt(fromOffset), ed.getPositionAt(endOffset));
-          ed.replaceSelection(text);
-          ed.focus();
-        }
-      };
+      return contentEditableAdapter(cell?.editor);
     }
 
     const host = document.createElement('div');
@@ -212,6 +228,91 @@ const kernel: JupyterFrontEndPlugin<void> = {
 
     bar.append(toggle, hideToggle);
     host.append(bar);
+
+    // Live backtick-completion popup, shown instead of invoking JupyterLab's
+    // native notebook completer when the "Live backtick completion" Glyph
+    // menu toggle is on (default). Namespaced class (`bpl_tip`, not lb.js's
+    // own `bpl_choices`) since this is a small purpose-built popup, not a
+    // mount of the vendored `lb.js` bar itself -- we only consume `input.js`'s
+    // engine here and keep this extension's own existing bar/keyboard UI.
+    const tip = document.createElement('div');
+    tip.className = 'bpl_tip';
+    tip.hidden = true;
+    tip.setAttribute('role', 'listbox');
+    // Appended to `document.body`, NOT `host` -- `host` lives inside the
+    // Lumino-managed header widget tree, which traps `position: fixed`
+    // descendants in its own stacking context regardless of `z-index`
+    // (confirmed live: `elementFromPoint` at the tip's own rendered
+    // coordinates returned the notebook cell underneath it, not the tip,
+    // despite `z-index: 10000`). The REPL's own completion popup and the
+    // Chrome extension's popup both already append at the top level for
+    // exactly this reason.
+    document.body.append(tip);
+    let glyphActive: { id: any; start: number } | undefined;
+    let glyphChoice: { editor: EditorAdapter; start: number; found: GlyphChoice[] } | undefined;
+
+    const LIVE_COMPLETION_KEY = 'bpl_completion_engine';
+    const liveCompletionEnabled = () => {
+      try { return localStorage.getItem(LIVE_COMPLETION_KEY) !== 'native'; } catch { return true; }
+    };
+    const setLiveCompletionEnabled = (enabled: boolean) => {
+      try { localStorage.setItem(LIVE_COMPLETION_KEY, enabled ? 'vendor' : 'native'); } catch { /* ignore */ }
+    };
+
+    const cancelGlyphCompletion = () => { glyphActive = undefined; glyphChoice = undefined; tip.hidden = true; };
+    // Hides the popup without dropping `glyphActive` -- used whenever the
+    // *query* just doesn't currently have anything to show (empty, or no
+    // matches), as opposed to the backtick context itself going away. Losing
+    // `glyphActive` here would mean every later keystroke's `refreshGlyphCompletion`
+    // bails out at its first guard forever, even once the query would match
+    // again (e.g. after backspacing, or typing past an unmatched prefix).
+    const hideGlyphTip = () => { glyphChoice = undefined; tip.hidden = true; };
+    // CodeMirror6's own completer reacts to the document change itself, not to
+    // DOM keydown propagation, so it can still open independently of our
+    // handler regardless of `stopImmediatePropagation()` on the backtick
+    // keydown. A synthetic-Escape dismissal was tried here and removed: it
+    // didn't actually close the native completer, and worse, our own Escape
+    // handler below caught its own synthetic event and cancelled this popup
+    // as a side effect. Left as a known cosmetic gap (the native completer
+    // may show alongside ours) rather than a functional one -- not solved
+    // this round.
+
+    const showGlyphCompletion = (e: EditorAdapter, start: number, found: [string, string][]) => {
+      if (!found.length) { hideGlyphTip(); return; }
+      tip.replaceChildren();
+      found.forEach(([glyph, name], i) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.dataset.glyph = glyph;
+        b.innerHTML = '<span class="bpl_tip_g"></span><span class="bpl_tip_n"></span>';
+        (b.querySelector('.bpl_tip_g') as HTMLElement).textContent = glyph;
+        (b.querySelector('.bpl_tip_n') as HTMLElement).textContent = name;
+        if (i === 0) b.classList.add('selected');
+        tip.append(b);
+      });
+      glyphChoice = { editor: e, start, found: found.map(([glyph, name]) => ({ glyph, name })) };
+      glyphActive = { id: e.id, start };
+      tip.hidden = false;
+      const r = e.rect();
+      tip.style.left = Math.max(4, Math.min(r.left, innerWidth - tip.offsetWidth - 8)) + 'px';
+      tip.style.top = Math.max(4, Math.min(r.bottom + 4, innerHeight - tip.offsetHeight - 8)) + 'px';
+    };
+
+    const refreshGlyphCompletion = () => {
+      if (!bplInput || !glyphActive) return;
+      const e = editor();
+      const item = e && e.bpl && bplInput.entry(e);
+      if (item && glyphActive.id === e!.id && glyphActive.start === item.start) {
+        showGlyphCompletion(e!, item.start, item.found);
+      } else cancelGlyphCompletion();
+    };
+
+    tip.addEventListener('mousedown', ev => {
+      ev.preventDefault();
+      const b = (ev.target as HTMLElement).closest('button');
+      if (b && glyphChoice) glyphChoice.editor.insert(b.dataset.glyph as string, glyphChoice.start);
+      cancelGlyphCompletion();
+    });
 
     // Use JupyterLab's official shell extension point instead of a fixed body
     // overlay. The header area sits above the main menu; see `reflow()`
@@ -253,7 +354,7 @@ const kernel: JupyterFrontEndPlugin<void> = {
       b.className = 'bpl_bar_glyph';
       b.dataset.glyph = glyph;
       b.textContent = glyph;
-      b.title = (glyphNames[glyph] ?? glyph);
+      b.title = (glyphNames.get(glyph) ?? glyph);
       barView.appendChild(b);
     }
 
@@ -261,7 +362,7 @@ const kernel: JupyterFrontEndPlugin<void> = {
     // layout includes ordinary physical keys plus every glyph directly
     // represented on those keycaps. Multi-glyph keys expose each glyph as an
     // independent click target (for example = -> + ≠ ≡).
-    const keyboardRows = macLayout.keyboard as Array<Array<[string, string, string]>>;
+    const keyboardRows = keyboardRowsData as Array<Array<[string, string, string]>>;
     const keyboardGlyphs = new Set<string>(Array.from('+-*/=<>!,~|%&^:;?'));
     const collectGlyphs = (value: any) => {
       if (typeof value === 'string') {
@@ -401,7 +502,7 @@ const kernel: JupyterFrontEndPlugin<void> = {
       app.shell.fit();
     };
 
-    const cancel = () => { active = undefined; };
+    const cancel = () => { active = undefined; cancelGlyphCompletion(); };
 
     bar.addEventListener('mousedown', ev => {
       const b = (ev.target as HTMLElement).closest('button') as HTMLButtonElement | null;
@@ -458,7 +559,8 @@ const kernel: JupyterFrontEndPlugin<void> = {
     const commandIds = {
       showKeyboard: 'basedpl:show-keyboard',
       showBar: 'basedpl:show-bar',
-      hide: 'basedpl:hide'
+      hide: 'basedpl:hide',
+      toggleLiveCompletion: 'basedpl:toggle-live-completion'
     };
 
     app.commands.addCommand(commandIds.showKeyboard, {
@@ -476,12 +578,23 @@ const kernel: JupyterFrontEndPlugin<void> = {
       isEnabled: () => !hidden,
       execute: hideInput
     });
+    app.commands.addCommand(commandIds.toggleLiveCompletion, {
+      label: 'Live Backtick Completion',
+      isToggled: () => liveCompletionEnabled(),
+      execute: () => {
+        setLiveCompletionEnabled(!liveCompletionEnabled());
+        cancelGlyphCompletion();
+        app.commands.notifyCommandChanged(commandIds.toggleLiveCompletion);
+      }
+    });
 
     const glyphMenu = new Menu({ commands: app.commands });
     glyphMenu.title.label = 'Glyph';
     glyphMenu.addItem({ command: commandIds.showKeyboard });
     glyphMenu.addItem({ command: commandIds.showBar });
     glyphMenu.addItem({ command: commandIds.hide });
+    glyphMenu.addItem({ type: 'separator' });
+    glyphMenu.addItem({ command: commandIds.toggleLiveCompletion });
     mainMenu.addMenu(glyphMenu, true, { rank: 50 });
 
 
@@ -495,9 +608,9 @@ const kernel: JupyterFrontEndPlugin<void> = {
     document.addEventListener('input', ev => {
       if (!keyInput || ((ev as InputEvent).inputType !== 'insertText' && (ev as InputEvent).inputType !== 'deleteContentBackward')) cancel();
       keyInput = false;
-      requestAnimationFrame(() => { remember(); });
+      requestAnimationFrame(() => { remember(); refreshGlyphCompletion(); });
     });
-    window.addEventListener('blur', () => { leftAlt = rightAlt = false; pending = null; cancel(); });
+    window.addEventListener('blur', () => { leftAlt = rightAlt = false; bplInput?.reset(); cancel(); });
     window.addEventListener('keyup', ev => {
       if (ev.code === 'AltLeft') leftAlt = false;
       if (ev.code === 'AltRight') rightAlt = false;
@@ -505,7 +618,19 @@ const kernel: JupyterFrontEndPlugin<void> = {
       remember();
     }, true);
 
+    // This handler is a direct port of BasedPL's own vendored `lb.js`'s keydown
+    // handler (jupyterlite/basedpl-kernel/src/lb.js, not currently mounted --
+    // see the note near `host.append(bar)` above), not an independent
+    // reimplementation: a from-scratch version of this exact logic went
+    // through several rounds of real bugs (popup state getting dropped
+    // instead of just hidden, Tab depending on stale stored state instead of
+    // recomputing fresh) that lb.js's own structure avoids by construction --
+    // notably, Tab/Enter/delimiter-commit below recompute `entry(e)` fresh on
+    // every keydown and can commit or (re)open the popup even if `glyphActive`
+    // was never set or got cleared, rather than depending on it already being
+    // correct going in.
     window.addEventListener('keydown', ev => {
+      if (ev.key === 'Escape' && ev.isTrusted && glyphChoice) { cancelGlyphCompletion(); ev.preventDefault(); ev.stopImmediatePropagation(); return; }
       keyInput = false;
       if (ev.code === 'AltLeft') leftAlt = true;
       if (ev.code === 'AltRight') rightAlt = true;
@@ -514,18 +639,59 @@ const kernel: JupyterFrontEndPlugin<void> = {
       if (!e || ev.isComposing || ev.defaultPrevented) { cancel(); return; }
       last.editor = e;
       const plain = !ev.ctrlKey && !ev.altKey && !ev.metaKey;
-      const pressed = press(ev, leftAlt && !rightAlt && !ev.getModifierState('AltGraph'));
+      const pressed = bplInput?.press(ev, leftAlt && !rightAlt && !ev.getModifierState('AltGraph'));
       if (pressed) {
         if (pressed.text) e.insert(pressed.text);
         if (pressed.stop) { cancel(); ev.preventDefault(); ev.stopImmediatePropagation(); return; }
       }
-      // Let the browser/editor insert the backtick first, then invoke JupyterLab's
-      // native notebook completer. Its popup is anchored to the real editor cursor
-      // and supports mouse clicks, arrows and Enter.
+
+      if (!liveCompletionEnabled() || !bplInput) {
+        // Native fallback: only the explicit backtick-invoke of JupyterLab's
+        // own completer, backed by the real `Session::complete()`/`complete_glyphs()`.
+        if (ev.key === String.fromCharCode(96) && plain) {
+          requestAnimationFrame(() => { void app.commands.execute('completer:invoke-notebook'); });
+        }
+        keyInput = plain && (ev.key.length === 1 || ev.key === 'Backspace');
+        return;
+      }
+
+      const item = bplInput.entry(e);
+      const tab = ev.key === 'Tab' && plain && !ev.shiftKey, enter = ev.key === 'Enter';
+      const typed = glyphActive?.id === e.id && glyphActive?.start === item?.start;
+      const delimiter = plain && ev.key.length === 1 && !/[a-z]/i.test(ev.key);
+
+      // Claimed here, ahead of JupyterLab's own `completer:invoke-notebook`
+      // Tab keybinding, so the two don't both respond to the same keystroke.
+      // See jupyterlite/README.md for the caveat: this relies on event-capture
+      // ordering, not a hard guarantee.
+      if (item && (tab || (typed && (enter || delimiter)))) {
+        if (item.found.length === 1) {
+          e.insert(item.found[0][0], item.start);
+          cancelGlyphCompletion();
+        } else if (tab) {
+          glyphActive = { id: e.id, start: item.start };
+          showGlyphCompletion(e, item.start, item.found);
+        }
+        if (tab) { ev.preventDefault(); ev.stopImmediatePropagation(); keyInput = false; return; }
+      }
+
       if (ev.key === String.fromCharCode(96) && plain) {
-        requestAnimationFrame(() => {
-          void app.commands.execute('completer:invoke-notebook');
-        });
+        if (e.empty && bplInput.inCode(e.text.slice(0, e.pos))) {
+          // Bootstrap tracking here, at the backtick itself: narrowing it
+          // further (as the user types letters) happens later, via the
+          // `input` listener's `refreshGlyphCompletion()` below.
+          glyphActive = { id: e.id, start: e.pos };
+          // Claim the backtick ahead of JupyterLab's native completer: the
+          // character still types normally (no `preventDefault`), but native
+          // completion tracking never starts via this keydown. That alone
+          // isn't airtight: CodeMirror6's own completion extension reacts to
+          // the resulting document *change*, not to DOM event propagation, so
+          // it can still auto-invoke independently of this handler -- known
+          // cosmetic gap, see the removed `dismissNativeCompleterIfOpen()`.
+          ev.stopImmediatePropagation();
+        } else cancelGlyphCompletion();
+      } else if (!(typed && plain && (/^[a-z]$/i.test(ev.key) || ev.key === 'Backspace'))) {
+        cancelGlyphCompletion();
       }
 
       keyInput = plain && (ev.key.length === 1 || ev.key === 'Backspace');
@@ -566,6 +732,14 @@ const kernel: JupyterFrontEndPlugin<void> = {
       '.bpl-header-widget .bpl_keyboard_view[hidden] { display:none !important; }',
       '.bpl-header-widget .bpl_bar_glyph { min-width:34px; height:34px; padding:2px 7px; border:1px solid var(--jp-border-color2,#c8c8c8); border-radius:6px; background:var(--jp-layout-color2,#f5f5f5); color:var(--jp-ui-font-color1,#111); font-family:var(--jp-content-font-family,sans-serif); font-size:22px; cursor:pointer; }',
       '.bpl-header-widget .bpl_bar_glyph:hover { background:var(--jp-layout-color3,#e5e5e5); border-color:var(--jp-brand-color1,#2196f3); }',
+      // `.bpl-header-widget` sets `pointer-events: none` so its transparent
+      // areas let clicks pass through to the content below -- `.ngn_lb`/
+      // `.ngn_hide` above already restore `auto` for the same reason; this
+      // popup needs it too, or it renders but silently can't be clicked.
+      '.bpl_tip { position: fixed; pointer-events: auto; max-height: 240px; max-width: min(320px, calc(100vw - 16px)); overflow: auto; background: var(--jp-layout-color1, #fff); color: var(--jp-ui-font-color1, #111); border: 1px solid var(--jp-border-color1, #888); border-radius: 6px; box-shadow: 0 3px 12px #0003; padding: 4px; font-family: var(--jp-ui-font-family, sans-serif); font-size: 14px; z-index: 10000; }',
+      '.bpl_tip button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; padding: 3px 6px; border-radius: 3px; display: block; width: 100%; text-align: left; white-space: nowrap; }',
+      '.bpl_tip button:hover, .bpl_tip button.selected { background: var(--jp-brand-color1, #2196f3); color: var(--jp-ui-inverse-font-color1, #fff); }',
+      '.bpl_tip_g { display: inline-block; min-width: 1.4em; margin-right: 6px; font-size: 1.1em; }',
       '@media(max-width: 1100px) { .bpl-header-widget .bpl_key { flex-basis: 0; width: auto; height: 48px; } .bpl-header-widget .bpl_glyphs { font-size: 23px; gap: 2px; } .bpl-header-widget .bpl_glyph_target.primary { font-size: 26px; } .bpl-header-widget .bpl_glyph_target:not(.primary) { font-size: 19px; } .bpl-header-widget .bpl_keyrow { gap: 3px; } .bpl-header-widget .ngn_lb { padding-left: 7px; padding-right: 7px; } }'
     ].join('\n');
     document.head.appendChild(style);

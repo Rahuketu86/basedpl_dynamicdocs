@@ -7,6 +7,7 @@ declare module './basedpl_web.js' {
   }
 
   export function configure(base: string): void;
+  export function symbols(): string;
   export default function init(): Promise<void>;
 }
 

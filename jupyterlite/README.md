@@ -75,6 +75,19 @@ Two things worth knowing if you touch this again:
 
 ## Local build + test loop
 
+The simplest entry point is the repo root's `scripts/pipeline.sh` -- a single
+self-contained script (just needs Docker, nothing else) that builds the dev
+image on first run, syncs the working tree into a long-lived container, and
+either runs the full suite or serves for live inspection:
+
+    scripts/pipeline.sh              # build once, run the full e2e suite, exit
+    scripts/pipeline.sh --serve      # build, then serve on :8899 and block
+    scripts/pipeline.sh --reset      # remove the container for a truly clean rebuild
+
+It's a thin wrapper around the two pieces below -- reach for those directly
+if you want more control (e.g. a different host/port setup, or to drive the
+container by hand).
+
 `scripts/build_and_test_jupyterlite.sh` builds the WASM module, the
 extension, the main site and the JupyterLite site, then runs all the E2E
 suites against a local static server -- the same thing
@@ -91,10 +104,164 @@ that actually changed:
     bash scripts/build_and_test_jupyterlite.sh                      # build + run all E2E once
     bash scripts/build_and_test_jupyterlite.sh --serve-only-port 8899  # build, then serve + block for live inspection
 
+One real gotcha if you drive the container by hand instead of through
+`pipeline.sh`: use a plain, non-login shell (`sh -c "..."`, or `docker exec`'s
+default) to run commands inside it, not `bash -lc`/`sh -lc`. A login shell
+sources `/etc/profile`, which unconditionally resets `PATH` and drops the
+image's `/opt/venv/bin` (where `jupyter` lives) off it without restoring it
+-- confirmed the hard way: this produces a silent, confusing "jupyter:
+command not found" that looks like a broken image, not a shell-invocation
+mistake.
+
 `scripts/verify_example_notebooks.mjs` is also runnable standalone, once
 `build/diagnostic/` exists (`wasm-bindgen "$WASM" --target nodejs --out-dir
 build/diagnostic`), for a near-instant recheck of the example notebooks
 without a browser at all.
+
+## Keyboard and completion engine
+
+The Option-chord keyboard and live backtick-completion popup run on
+BasedPL's own vendored `input.js` (`src/input.js`/`src/layout.js`, fetched
+from upstream at the pinned `REV` by `scripts/prepare_basedpl_wasm.sh` --
+see the root README's "Interpreter integration" section), not a hand-ported
+reimplementation. `index.ts` requests the real glyph table from the active
+kernel's worker once per kernel start (`BasedPLKernel.getSymbols()` ->
+`worker.ts`'s `symbols` message -> the `symbols()` wasm export), then calls
+`input(rows, layout)` to get `{press, reset, matches, entry, inCode,
+bplStart}`. This replaced an earlier hand-ported `press()`/`usKey()` and a
+~70-entry hardcoded glyph-name table that had drifted from the real symbol
+set.
+
+The main keydown handler is a direct port of BasedPL's own vendored `lb.js`'s
+keydown handler (`src/lb.js`, present but not mounted -- see below), not an
+independent reimplementation: an earlier from-scratch version of this same
+logic went through several real bugs (popup state getting dropped instead of
+just hidden on an empty query, Tab depending on stale stored state instead of
+recomputing fresh) that `lb.js`'s own structure avoids by construction.
+Concretely, its Tab/Enter/delimiter-commit check recomputes `entry(e)` fresh
+on *every* keydown and can commit a single match or (re)open the popup even
+if tracking state was never set or got cleared -- this makes Tab
+self-healing: confirmed live by typing a query fast enough that tracking
+state couldn't possibly have "landed" yet, and pressing Tab immediately
+after anyway still committed correctly.
+
+A bare backtick shows the full, unfiltered symbol list immediately (same as
+real `lb.js`/`input.js`: `matches('')` prefix-matches every name), not a
+narrowed-down nothing -- an early version special-cased this to avoid
+flooding the popup, which turned out to be an unwanted deviation from the
+real reference behavior, not a correctness fix.
+
+The visual Mac-keyboard grid (the full QWERTY-shaped layout, as opposed to
+the compact glyph bar) is driven by `src/keyboard_rows.js`, a small
+hand-authored `keyboard` row-shape dataset matching the REPL's own
+`DATA.keyboard` -- deliberately **not** part of the vendored `layout.json`
+(which only has `option`/`alt_aliases`/`states`/`unshifted`; there's no
+`keyboard` field in the real upstream file at all). This used to live
+*inside* `layout.js` before vendoring overwrote it with the real upstream
+file and silently deleted it, crashing plugin activation outright
+(`keyboardRows is not iterable`) and taking the whole bar/keyboard/Glyph
+menu/header widget down with it. If you ever need to touch the keyboard
+grid's shape again, edit `keyboard_rows.js`, not `layout.js` -- re-running
+`scripts/prepare_basedpl_wasm.sh` will always overwrite `layout.js` wholesale
+from upstream, but never touches `keyboard_rows.js`.
+
+`lb.js` is also vendored alongside `input.js`/`layout.json` (same pinned
+`REV`) but its own `editor()`/bar-mounting code is **not** called here: it
+mounts its own generic toolbar/popup DOM and self-guards against
+double-mounting by checking for an existing `.ngn_lb` element on the page --
+which this extension's own bar already is. Calling it would either silently
+no-op (if it sees our bar first) or duplicate the toolbar. Its *keydown
+handler* is what got ported (above); its DOM-mounting and editor-reading
+code did not transfer over as-is, for the editor-adapter reasons below.
+
+### Editor adapter: why not CodeMirror's own API
+
+`editor()`/`snapshotEditor()` read and write the active cell through plain
+DOM `Selection`/`Range` APIs -- ported from the Chrome extension's
+`content.js`, **not** from CodeMirror6's own `EditorView`/`state` API
+(`cell.editor.editor`, `view.state.selection.main`, `view.dispatch(...)`),
+which is what this used to do. That approach caused real, confirmed problems
+on this exact page during the extension's own development (see the saved
+`basedpl_extension` session): a framework's live internal model can be a
+step out of sync with what external code observes, in ways a `Selection`/
+`Range` reader never is, since that always reflects genuine browser cursor
+state rather than CodeMirror's own bookkeeping. One concrete symptom this
+caused: chord-typing's `insert()` crashed JupyterLab's own `setSelections`
+(`ed.getPositionAt(offset)` returning `undefined` for an in-range offset) --
+confirmed live, not theoretical.
+
+"Lines" = direct children of the editable root (`.cm-content`'s real DOM
+shape is one `div.cm-line` per line), the same assumption `content.js`'s
+generic contenteditable adapter makes -- it's not CodeMirror-specific at
+all, which is exactly the point: it should keep working if JupyterLab ever
+changes its internal CodeMirror integration, since it never touches that
+internal API in the first place. Verified against a multi-line cell
+specifically (the actual new risk surface of this change): chord-typing at
+the end of a cell's *second* line correctly targeted that line, not the
+first.
+
+One real testing gotcha worth recording: `document.execCommand('insertText',
+...)` dispatched standalone (decoupled from a real keydown, e.g. from an
+out-of-band debugging script) can get silently **reverted** by CodeMirror6 a
+short while after -- content appears to insert, then reverts with no error,
+because CodeMirror's own DOM reconciliation overrides a mutation it didn't
+originate via its own transaction system. This is a simulation artifact, not
+an application bug: genuine keystrokes (real hardware, or a real
+`Input.dispatchKeyEvent`/`page.keyboard.press` style simulation) go through
+CodeMirror's own input handling and don't have this problem. Don't trust an
+`execCommand`-based test's "it reverted" result as evidence of an app bug
+without re-checking with real per-key events first.
+
+### The completion popup lives at `document.body`, not inside the widget
+
+`tip` (the completion popup element) is appended to `document.body`
+directly, **not** to `host` (the header widget's own node). It used to be a
+child of `host`, which seemed harmless -- the popup still rendered, with the
+right content, `hidden` toggling correctly -- but it was invisible on
+screen regardless of `z-index`. Confirmed via
+`document.elementFromPoint()` at the popup's own rendered coordinates: it
+resolved to the notebook cell underneath, not the popup, even at
+`z-index: 10000`. `host` lives inside the Lumino-managed header widget's DOM
+subtree, and something in that ancestor chain (JupyterLab/Lumino panels
+commonly use `transform`/`will-change` for compositing) creates its own
+stacking context, which traps a `position: fixed` descendant's `z-index`
+comparison *within* that context -- so no matter how high it's set locally,
+the whole header-widget subtree can still paint behind the main notebook
+content panel's own stacking context. This is the same reason the REPL's own
+completion popup, and the Chrome extension's popup, both append at the top
+level (`document.body`/`documentElement`) instead of some nested container.
+All the `.bpl_tip*` CSS rules are deliberately unscoped (not prefixed with
+`.bpl-header-widget`) so this move needed no CSS changes.
+
+If a popup/overlay you add here ever "looks right in dev tools but isn't
+visible on screen," check `elementFromPoint()` at its own coordinates before
+assuming the logic is broken -- `hidden`/computed-style state can be
+completely correct while this stacking-context trap still hides it.
+
+### Native completer toggle
+
+A "Live Backtick Completion" item in the Glyph menu (checked by default,
+`localStorage` key `bpl_completion_engine`) switches between the live popup
+above and JupyterLab's native notebook completer (`completer:invoke-notebook`,
+backed by the real `Session::complete()`/`complete_glyphs()` -- unchanged,
+see the root README). When live completion is on, the backtick keydown
+handler claims the keystroke via `stopImmediatePropagation()` (no
+`preventDefault`, so the character still types normally) so our own
+tracking starts before JupyterLab's own keybinding dispatch runs.
+
+That alone isn't airtight: CodeMirror6's own completer reacts to the
+resulting document *change* itself, not to DOM keydown propagation, so it
+can still open independently of this handler regardless of
+`stopImmediatePropagation()`. A synthetic-Escape dismissal was tried and
+removed -- it didn't actually close the native completer, and worse, it got
+caught by this extension's *own* Escape handler (which didn't yet check
+`event.isTrusted`) and cancelled the live popup as a side effect. Current
+state: the native completer may still visually co-appear alongside the live
+popup in some cases. Accepted as a known cosmetic gap, not a functional one
+-- the live popup's own show/narrow/commit behavior is unaffected either
+way. The Escape handler now checks `ev.isTrusted` regardless, as a general
+hardening (a synthetic Escape from anywhere shouldn't be able to cancel a
+real completion session).
 
 ## JupyterLab shell integration
 

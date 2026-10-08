@@ -7,6 +7,13 @@ use wasm_bindgen::prelude::*;
 #[wasm_bindgen]
 pub fn configure(base: String) { basedpl::configure_browser(base); }
 
+/// Every glyph's row (name, monad, dyad, aliases, and its precomputed Option-chord
+/// `shortcut`), as JSON text -- the same data upstream's own WASM package exposes
+/// to feed the vendored `lb.js`/`input.js` keyboard and completion engine. Called
+/// once at worker-ready, not per keystroke: see jupyterlite/README.md.
+#[wasm_bindgen]
+pub fn symbols() -> String { basedpl::symbols::rows().to_string() }
+
 #[wasm_bindgen]
 pub struct BplSession { session: Session }
 
@@ -21,7 +28,7 @@ impl BplSession {
         let events_sink = events.clone();
         let output_sink = output.clone();
         let sink = Arc::new(move |event: &basedpl::Output| {
-            events_sink.lock().unwrap().push(event.json());
+            events_sink.lock().unwrap().push(basedpl::protocol::output(event));
             output_sink.lock().unwrap().push_str(&event.written());
         });
         let result = self.session.eval_with(code, EvalOptions {
@@ -44,7 +51,7 @@ impl BplSession {
         let events_sink = events.clone();
         let output_sink = output.clone();
         let sink = Arc::new(move |event: &basedpl::Output| {
-            events_sink.lock().unwrap().push(event.json());
+            events_sink.lock().unwrap().push(basedpl::protocol::output(event));
             output_sink.lock().unwrap().push_str(&event.written());
         });
 

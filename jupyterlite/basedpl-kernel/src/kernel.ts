@@ -80,7 +80,7 @@ export class BasedPLKernel extends BaseKernel {
   }
 
   private async request(
-    type: 'eval' | 'complete',
+    type: 'eval' | 'complete' | 'symbols',
     payload: Record<string, unknown>
   ): Promise<any> {
     await this.bplReady;
@@ -91,17 +91,28 @@ export class BasedPLKernel extends BaseKernel {
     });
   }
 
+  /**
+   * Every glyph's row (name, monad, dyad, aliases, shortcut), from the real
+   * interpreter -- called once per kernel start by the frontend's keyboard/
+   * completion plugin (`index.ts`), not per keystroke. See
+   * jupyterlite/README.md.
+   */
+  async getSymbols(): Promise<Array<Record<string, string>>> {
+    const response = await this.request('symbols', {});
+    return response.result;
+  }
+
   async kernelInfoRequest(): Promise<KernelMessage.IInfoReplyMsg['content']> {
     return {
       implementation: 'BasedPL',
-      implementation_version: '0.1.28',
+      implementation_version: '0.1.31',
       language_info: {
         codemirror_mode: { name: 'apl' },
         file_extension: '.bpl',
         mimetype: 'text/x-apl',
         name: 'basedpl',
         pygments_lexer: 'apl',
-        version: '0.1.28'
+        version: '0.1.31'
       },
       protocol_version: '5.3',
       status: 'ok',

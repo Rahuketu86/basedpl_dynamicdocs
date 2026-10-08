@@ -1,0 +1,8 @@
+/build/
+/dist/
+node_modules/
+jupyterlite/basedpl-kernel/lib/
+jupyterlite/basedpl-kernel/jupyterlite_basedpl_kernel/
+jupyterlite/basedpl-kernel/src/basedpl_web.js
+jupyterlite/basedpl-kernel/src/basedpl_web_bg.wasm
+*.log

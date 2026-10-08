@@ -1,4 +1,4 @@
-const input = (((symbols, layout) => {
+((symbols, layout) => {
     // US physical keys, before macOS Option or another layout transforms event.key.
     const punctuation = {Backquote: '`~', Minus: '-_', Equal: '=+', BracketLeft: '[{', BracketRight: ']}',
         Backslash: '\\|', Semicolon: ';:', Quote: "'\"", Comma: ',<', Period: '.>', Slash: '/?'};
@@ -104,5 +104,3 @@ const input = (((symbols, layout) => {
 
     return {matches, inCode, bplStart, entry, press, reset};
 })
-);
-export default input;

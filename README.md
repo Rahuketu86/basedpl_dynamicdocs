@@ -27,10 +27,12 @@ The interpreter runs in a Web Worker so evaluation does not block the UI thread.
     web/Cargo.toml                  WASM wrapper crate
     web/src/lib.rs                  wasm-bindgen API around BasedPL Session
     web/worker.js                   Persistent browser worker
+    web/vendor/                     Vendored input.js/lb.js/layout.json (see below)
     scripts/prepare_basedpl_wasm.sh Reproducible local BasedPL compatibility patch
     jupyterlite/                    JupyterLite kernel + extension (see jupyterlite/README.md)
     docker/jupyterlite-build.Dockerfile
                                     Local/remote dev image for fast JupyterLite iteration
+    scripts/pipeline.sh             Single-command Docker build + test (wraps the two below)
     scripts/build_and_test_jupyterlite.sh
                                     Build + test the JupyterLite side end-to-end, outside CI
     .github/workflows/pages.yml     Production Pages build + deploy (build+deploy only; no E2E)
@@ -46,7 +48,7 @@ The interpreter runs in a Web Worker so evaluation does not block the UI thread.
 The application pins:
 
     AnswerDotAI/basedpl
-    v0.1.28  (f340438bb01536bda09cf3ee16a0eb057d1372c0)
+    v0.1.31  (88333e3785f4e8c391ed93dba0c001cb350c9440)
 
 This is an officially tagged, released revision -- the same commit the
 `basedpl` npm package ships from -- not an arbitrary commit. Bumping this pin
@@ -55,12 +57,36 @@ BasedPL evaluator gets refactored internally fairly often), so treat it as
 its own change with its own full regression pass (`scripts/build_and_test_jupyterlite.sh`,
 not just the WASM diagnostic smoke test below), not a drive-by edit.
 
+`scripts/prepare_basedpl_wasm.sh` also vendors `python/basedpl/{input.js,
+lb.js,layout.json}` from this exact same checkout -- these are upstream's own
+real Option-chord keyboard/backtick-completion engine and key layout (the
+same one upstream's own WASM-backed playground uses), not a hand-ported
+reimplementation. They're pinned to `REV` together with the WASM build and
+must never be bumped independently of it: the engine's chord state machine
+and the interpreter's actual glyph set have to agree. The real glyph table
+itself (name/monad/dyad/aliases/shortcut per glyph) isn't a vendorable file at
+all -- it's computed at runtime from the primitive/operator registry -- so
+`web/src/lib.rs` exposes it as a `symbols()` wasm export instead, called once
+per worker/kernel start (never per keystroke; see jupyterlite/README.md for
+why). See `jupyterlite/README.md`'s "Keyboard and completion engine" section
+for how the REPL and JupyterLite both consume this.
+
 The wrapper uses the real Rust API:
 
 - Session::new()
 - Session::eval_with()
 - Session::show()
 - Session::complete()
+- basedpl::symbols::{rows, matches, layout} -- the real glyph table and
+  chord-engine data, not a hand-curated list (see "Keyboard and completion
+  engine" in jupyterlite/README.md)
+- basedpl::protocol::output(&Output) -- JSON-encodes one evaluation output
+  event (`{"kind": ..., "data": {...}}`, with `MimeData::Bytes` base64-encoded
+  the same way Jupyter messages do). This replaced `Output::json()`, which
+  the v0.1.31 bump removed outright -- `Output` changed shape from an opaque
+  method to public `kind`/`data` fields plus `text()`/`written()`, and the
+  JSON-encoding responsibility moved to this free function. Same wire shape,
+  just relocated; not a breaking change for anything downstream of `eval()`.
 
 One Session lives inside the worker, so interpreter state persists between REPL evaluations.
 
@@ -75,6 +101,8 @@ This keeps the Node and browser wasm-bindgen targets on the same deterministic
 wire format instead of depending on JavaScript object serialization.
 
 The UI also has a compact APL keyboard, command history, completion popup, Enter-to-evaluate, Tab-to-complete, Escape-to-close, and cursor-aware glyph insertion.
+
+Physical Option-key chord typing and backtick-name completion in the REPL run on the same vendored `input.js` engine described in `jupyterlite/README.md`'s "Keyboard and completion engine" section (fed by the `symbols()` wasm export at worker-ready), not a hand-curated glyph list -- one integrated engine, always on, same as the Mac/Bar keyboard.
 
 ### REPL value rendering
 

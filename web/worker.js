@@ -1,11 +1,14 @@
-import init, { BplSession } from './basedpl_web.js';
+import init, { BplSession, symbols } from './basedpl_web.js';
 
 let session;
 
 async function start() {
   await init();
   session = new BplSession();
-  postMessage({ type: 'ready' });
+  // Called once, not per keystroke: the real glyph table (name/monad/dyad/
+  // aliases/shortcut), fed to the vendored `input.js` engine on the main
+  // thread. See jupyterlite/README.md for why this isn't a per-keystroke call.
+  postMessage({ type: 'ready', symbols: JSON.parse(symbols()) });
 }
 
 start().catch(error => postMessage({ type: 'fatal', error: String(error) }));

@@ -1,8 +1,9 @@
-import init, { BplSession, configure } from './basedpl_web.js';
+import init, { BplSession, configure, symbols } from './basedpl_web.js';
 
 type Request =
   | { id: number; type: 'eval'; code: string }
-  | { id: number; type: 'complete'; prefix: string; glyphs?: boolean };
+  | { id: number; type: 'complete'; prefix: string; glyphs?: boolean }
+  | { id: number; type: 'symbols' };
 
 type ConfigureMessage = { type: 'configure'; base: string };
 
@@ -39,7 +40,12 @@ self.onmessage = event => {
   }
 
   try {
-    if (request.type === 'eval') {
+    if (request.type === 'symbols') {
+      // Called once per kernel start, not per keystroke -- the real glyph
+      // table, fed to the vendored `input.js` engine on the frontend. See
+      // jupyterlite/README.md.
+      self.postMessage({ id: request.id, type: 'result', result: JSON.parse(symbols()) });
+    } else if (request.type === 'eval') {
       self.postMessage({
         id: request.id,
         type: 'result',

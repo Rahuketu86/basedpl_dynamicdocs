@@ -1,4 +1,4 @@
-export default {
+{
  "alt_aliases": {"£": "#"},
  "unshifted": {"*": "8", "~": "`", "_": "-", "|": "\\", ":": ";"},
  "option": {
@@ -69,4 +69,3 @@ export default {
   "encode": {"terminator": "⊤", "keys": {"t": "⍕"}}
  }
 }
-;
