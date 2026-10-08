@@ -35,6 +35,11 @@ const kernel: JupyterFrontEndPlugin<void> = {
     const agentFilesBase = new URL('../files/', self.location.href).href;
     void registerBasedPLWebMCP(agentFilesBase).catch(error => {
       console.warn('BasedPL: WebMCP tools unavailable', error);
+      const status = document.getElementById('basedpl-webmcp-status');
+      if (status) {
+        status.textContent = 'WebMCP: registration failed\\nCheck console for details.';
+        status.style.borderColor = '#c62828';
+      }
     });
 
     kernelspecs.register({
