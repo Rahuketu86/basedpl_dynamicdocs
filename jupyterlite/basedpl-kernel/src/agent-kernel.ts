@@ -1,16 +1,24 @@
 import init, { BplSession, configure } from './basedpl_web.js';
 
-type ExecuteRequest = {
-  channel: 'shell';
-  header: {
-    msg_id: string;
-    msg_type: 'execute_request';
-    session: string;
-    username: string;
-    version: '5.3';
-  };
+type JupyterHeader = {
+  msg_id: string;
+  msg_type: string;
+  session: string;
+  username: string;
+  version: string;
+};
+
+type JupyterMessage = {
+  channel: 'shell' | 'iopub' | 'stdin' | 'control';
+  header: JupyterHeader;
   parent_header: Record<string, unknown>;
   metadata: Record<string, unknown>;
+  content: Record<string, unknown>;
+};
+
+type ExecuteRequest = JupyterMessage & {
+  channel: 'shell';
+  header: JupyterHeader & { msg_type: 'execute_request' };
   content: {
     code: string;
     silent?: boolean;
@@ -21,19 +29,7 @@ type ExecuteRequest = {
   };
 };
 
-type KernelRequest = ExecuteRequest | {
-  channel: 'shell';
-  header: {
-    msg_id: string;
-    msg_type: 'kernel_info_request';
-    session: string;
-    username: string;
-    version: '5.3';
-  };
-  parent_header: Record<string, unknown>;
-  metadata: Record<string, unknown>;
-  content: Record<string, never>;
-};
+type KernelRequest = JupyterMessage;
 
 type BplEvent = {
   kind?: string;
@@ -74,7 +70,7 @@ async function start(): Promise<void> {
   });
 }
 
-function header(msgType: string, parent: { session: string; username: string; version: string }) {
+function header(msgType: string, parent: JupyterHeader) {
   return {
     msg_id: crypto.randomUUID(),
     msg_type: msgType,
@@ -86,7 +82,7 @@ function header(msgType: string, parent: { session: string; username: string; ve
 
 function publish(
   msgType: string,
-  parent: ExecuteRequest['header'],
+  parent: JupyterHeader,
   content: Record<string, unknown>
 ): void {
   self.postMessage({
@@ -98,7 +94,7 @@ function publish(
   });
 }
 
-function publishError(parent: ExecuteRequest['header'], message: string): void {
+function publishError(parent: JupyterHeader, message: string): void {
   publish('error', parent, {
     ename: 'BasedPLError',
     evalue: message,
@@ -106,7 +102,7 @@ function publishError(parent: ExecuteRequest['header'], message: string): void {
   });
 }
 
-function publishEvent(parent: ExecuteRequest['header'], event: BplEvent): void {
+function publishEvent(parent: JupyterHeader, event: BplEvent): void {
   const data: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(event.data ?? {})) {
     if (typeof value === 'string') data[key] = value;
