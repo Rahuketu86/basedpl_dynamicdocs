@@ -36,11 +36,30 @@ export async function registerBasedPLWebMCP(
   filesBase: string
 ): Promise<(() => Promise<void>) | null> {
   const modelContext = (document as WebMCPDocument).modelContext;
+  const status = document.createElement('div');
+  status.id = 'basedpl-webmcp-status';
+  status.setAttribute('aria-live', 'polite');
+  Object.assign(status.style, {
+    position: 'fixed', right: '12px', bottom: '12px', zIndex: '2147483647',
+    maxWidth: '360px', padding: '10px 12px', borderRadius: '8px',
+    border: '1px solid #bbb', background: 'rgba(255,255,255,.96)',
+    color: '#222', font: '12px/1.4 -apple-system,BlinkMacSystemFont,sans-serif',
+    boxShadow: '0 3px 14px rgba(0,0,0,.18)', whiteSpace: 'pre-wrap'
+  });
+  const setStatus = (message: string, ok = true) => {
+    status.textContent = message;
+    status.style.borderColor = ok ? '#2e7d32' : '#c62828';
+  };
+  document.body.appendChild(status);
+
+  const modelContext = (document as WebMCPDocument).modelContext;
   if (!modelContext) {
+    setStatus('WebMCP: document.modelContext unavailable', false);
     console.warn('BasedPL WebMCP: document.modelContext unavailable');
     return null;
   }
 
+  setStatus('WebMCP: available\\nRegistering BasedPL tools…');
   console.info('BasedPL WebMCP: document.modelContext available; registering tools');
 
   const session = new AgentSession(filesBase);
@@ -102,20 +121,21 @@ export async function registerBasedPLWebMCP(
   if (modelContext.getTools) {
     try {
       const tools = await modelContext.getTools();
-      console.info(
-        'BasedPL WebMCP: visible tools after registration',
-        tools.map(tool => tool.name)
-      );
+      const names = tools.map(tool => tool.name);
+      console.info('BasedPL WebMCP: visible tools after registration', names);
+      setStatus('WebMCP: registered ✓\\n' + names.map(name => '• ' + name).join('\\n'));
     } catch (error) {
       console.warn(
         'BasedPL WebMCP: getTools() verification failed; tools may still be registered',
         error
       );
+      setStatus('WebMCP: registered, verification failed\\nCheck console for details.', false);
     }
   } else {
     console.info(
       'BasedPL WebMCP: getTools() unavailable in this browser; registration completed'
     );
+    setStatus('WebMCP: registered ✓\\nbasedpl_eval\\nbasedpl_reset\\n(getTools unavailable)');
   }
 
   return async () => {
