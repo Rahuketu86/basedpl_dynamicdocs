@@ -52,7 +52,6 @@ export async function registerBasedPLWebMCP(
   };
   document.body.appendChild(status);
 
-  const modelContext = (document as WebMCPDocument).modelContext;
   if (!modelContext) {
     setStatus('WebMCP: document.modelContext unavailable', false);
     console.warn('BasedPL WebMCP: document.modelContext unavailable');
