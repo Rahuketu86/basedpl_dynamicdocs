@@ -74,7 +74,7 @@ async function start(): Promise<void> {
   });
 }
 
-function header(msgType: string, parent: ExecuteRequest['header']) {
+function header(msgType: string, parent: { session: string; username: string; version: string }) {
   return {
     msg_id: crypto.randomUUID(),
     msg_type: msgType,
