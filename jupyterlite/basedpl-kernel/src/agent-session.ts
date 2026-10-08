@@ -34,6 +34,12 @@ type WorkerReady = {
 type WorkerMessage =
   | WorkerReady
   | {
+      type: 'symbols';
+      requestId: string;
+      generation: number;
+      symbols: Array<Record<string, string>>;
+    }
+  | {
       type: 'result';
       requestId: string;
       generation: number;
@@ -201,7 +207,9 @@ export class AgentSession {
     signal?: AbortSignal
   ): Promise<AgentEvalResult> {
     if (code.length > MAX_CODE_CHARS) {
-      throw new Error(`INPUT_TOO_LARGE: BasedPL code is limited to ${MAX_CODE_CHARS} characters`);
+      throw new Error(
+        `INPUT_TOO_LARGE: BasedPL code is limited to ${MAX_CODE_CHARS} characters`
+      );
     }
 
     await this.start();
@@ -255,7 +263,11 @@ export class AgentSession {
       timer = setTimeout(() => {
         cleanup();
         void this.reset().finally(() =>
-          reject(new Error(`TIMEOUT: BasedPL evaluation exceeded ${this.timeoutMs}ms and the agent session was reset`))
+          reject(
+            new Error(
+              `TIMEOUT: BasedPL evaluation exceeded ${this.timeoutMs}ms and the agent session was reset`
+            )
+          )
         );
       }, this.timeoutMs);
 
@@ -270,15 +282,70 @@ export class AgentSession {
     });
   }
 
+  private async requestSymbols(
+    signal?: AbortSignal
+  ): Promise<Array<Record<string, string>>> {
+    await this.start();
+
+    if (signal?.aborted) {
+      throw new Error('CANCELLED: BasedPL symbols request was cancelled');
+    }
+
+    const worker = this.worker;
+    if (!worker) throw new Error('BasedPL agent worker is unavailable');
+
+    const generation = this.generation;
+    const requestId = this.newRequestId('symbols');
+
+    return await new Promise<Array<Record<string, string>>>((resolve, reject) => {
+      const onAbort = () => {
+        this.pending.delete(requestId);
+        reject(new Error('CANCELLED: BasedPL symbols request was cancelled'));
+      };
+
+      this.pending.set(requestId, {
+        resolve: message => {
+          signal?.removeEventListener('abort', onAbort);
+          if (message.type !== 'symbols') {
+            reject(new Error('Unexpected BasedPL symbols response'));
+            return;
+          }
+          resolve(message.symbols);
+        },
+        reject: error => {
+          signal?.removeEventListener('abort', onAbort);
+          reject(error);
+        }
+      });
+
+      signal?.addEventListener('abort', onAbort, { once: true });
+      worker.postMessage({
+        type: 'symbols',
+        requestId,
+        generation
+      });
+    });
+  }
+
   eval(code: string, signal?: AbortSignal): Promise<AgentEvalResult> {
-    const job = this.queue.then(() => this.execute(code, signal));
+    const epoch = this.queueEpoch;
+    const job = this.queue.then(() => {
+      if (epoch !== this.queueEpoch) {
+        throw new Error('SESSION_RESET: queued evaluation was discarded');
+      }
+      return this.execute(code, signal);
+    });
     this.queue = job.catch(() => undefined);
     return job;
   }
 
+  symbols(signal?: AbortSignal): Promise<Array<Record<string, string>>> {
+    return this.requestSymbols(signal);
+  }
+
   async reset(): Promise<void> {
     this.state = 'resetting';
-    this.generation += 1;
+    this.queueEpoch += 1;
     this.failAll(new Error('SESSION_RESET'));
 
     if (this.worker) {
@@ -287,11 +354,13 @@ export class AgentSession {
     }
 
     this.ready = null;
+    this.state = 'closed';
     await this.start();
   }
 
   async close(): Promise<void> {
     this.generation += 1;
+    this.queueEpoch += 1;
     this.failAll(new Error('SESSION_CLOSED'));
 
     const worker = this.worker;
