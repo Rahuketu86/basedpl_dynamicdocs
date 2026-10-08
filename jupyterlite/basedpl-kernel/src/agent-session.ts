@@ -68,6 +68,7 @@ export class AgentSession {
   private pending = new Map<string, Pending>();
   private nextRequestId = 1;
   private queue: Promise<unknown> = Promise.resolve();
+  private queueEpoch = 0;
   private generation = 0;
   private ready: Promise<void> | null = null;
   private state: 'closed' | 'initializing' | 'ready' | 'resetting' = 'closed';
