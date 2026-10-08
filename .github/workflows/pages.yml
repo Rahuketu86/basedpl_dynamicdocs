@@ -20,14 +20,24 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      # This cache is deliberately independent of JupyterLite/frontend changes.
-      # Bump BPL_WASM_CACHE_VERSION only when the Rust/WASM implementation changes.
+      # This cache is deliberately independent of JupyterLite/frontend changes
+      # -- but that also means it is NOT content-addressed: a cache hit skips
+      # the entire WASM build (including scripts/prepare_basedpl_wasm.sh and
+      # the vendoring it does), unconditionally, regardless of what actually
+      # changed. Bump the `key:` string below (both occurrences -- it's
+      # duplicated at the save step further down) whenever web/src/lib.rs,
+      # the pinned REV in scripts/prepare_basedpl_wasm.sh, or the local WASM
+      # compatibility patch changes. Confirmed the hard way: forgetting this
+      # once deployed new JS (expecting a wasm export that didn't exist in
+      # the stale cached binary) paired with the old WASM, breaking the
+      # worker silently in production with no useful error beyond
+      # `[object Event]`.
       - name: Restore BasedPL WASM cache
         id: bpl-wasm-cache
         uses: actions/cache/restore@v4
         with:
           path: build/bpl
-          key: basedpl-wasm-v2
+          key: basedpl-wasm-v3
 
       - name: Install Rust
         if: steps.bpl-wasm-cache.outputs.cache-hit != 'true'
@@ -102,7 +112,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: build/bpl
-          key: basedpl-wasm-v2
+          key: basedpl-wasm-v3
 
       - name: Install Node
         uses: actions/setup-node@v4
