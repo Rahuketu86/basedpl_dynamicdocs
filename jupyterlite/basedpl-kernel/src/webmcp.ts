@@ -91,29 +91,7 @@ export async function registerBasedPLWebMCP(
     { signal: controller.signal }
   );
 
-  await modelContext.registerTool(
-    {
-      name: 'basedpl_symbols',
-      title: 'BasedPL Symbols',
-      description:
-        'Return the BasedPL glyph table, including glyph names, aliases, and keyboard shortcuts.',
-      inputSchema: {
-        type: 'object',
-        properties: {},
-        additionalProperties: false
-      },
-      annotations: {
-        readOnlyHint: true,
-        consequentialHint: false,
-        untrustedContentHint: false
-      },
-      execute: async (_input, context) => ({
-        status: 'ok',
-        symbols: await session.symbols(context.signal)
-      })
-    },
-    { signal: controller.signal }
-  );
+
 
   return async () => {
     controller.abort();
