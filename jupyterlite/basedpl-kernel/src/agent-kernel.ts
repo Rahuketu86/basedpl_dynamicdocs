@@ -122,9 +122,13 @@ function publishEvent(parent: ExecuteRequest['header'], event: BplEvent): void {
       metadata: {}
     });
   } else if (text) {
-    publish('stream', parent, {
-      name: 'stdout',
-      text
+    // Match the existing BasedPLKernel behavior: BaseKernel does not expose
+    // publishStream, so textual event output is represented as a Jupyter
+    // execute_result message.
+    publish('execute_result', parent, {
+      execution_count: executionCount,
+      data: { 'text/plain': text },
+      metadata: {}
     });
   }
 }
@@ -150,25 +154,7 @@ function execute(request: ExecuteRequest): void {
         publishEvent(request.header, event);
       }
 
-      // Some BasedPL evaluations expose a value without a display event.
-      // Preserve that value using the standard Jupyter execute_result MIME
-      // bundle rather than inventing a new result protocol.
-      if (result.value !== null && !(result.events ?? []).some(
-        event => event.kind === 'display'
-      )) {
-        publish('execute_result', request.header, {
-          execution_count: executionCount,
-          data: { 'text/plain': result.value },
-          metadata: {}
-        });
-      }
 
-      if (result.output) {
-        publish('stream', request.header, {
-          name: 'stdout',
-          text: result.output
-        });
-      }
     }
 
     if (result.error) {
