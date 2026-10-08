@@ -359,7 +359,32 @@ document.getElementById('kbMacBtn').onclick=()=>{
 replInput.addEventListener('input',()=>{resizeInput();showCompletion()});
 replInput.addEventListener('keydown',e=>{if(e.key==='Tab'&&!completion.hidden){const b=completion.querySelector('.selected')||completion.querySelector('button');if(b){e.preventDefault();acceptCompletion(b);return}}if(e.key==='Escape'){completion.hidden=true;return}if(e.key==='ArrowUp'&&replInput.selectionStart===0&&replHistory.length){e.preventDefault();replHistoryPos=Math.min(replHistoryPos+1,replHistory.length-1);replInput.value=replHistory[replHistory.length-1-replHistoryPos]||'';resizeInput();replInput.setSelectionRange(replInput.value.length,replInput.value.length);return}if(e.key==='ArrowDown'&&replHistoryPos>=0){e.preventDefault();replHistoryPos--;replInput.value=replHistoryPos<0?'':replHistory[replHistory.length-1-replHistoryPos]||'';resizeInput();replInput.setSelectionRange(replInput.value.length,replInput.value.length);return}if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();runRepl()}});
 completion.addEventListener('mousedown',e=>{const b=e.target.closest('button');if(b){e.preventDefault();acceptCompletion(b)}});
-function runRepl(){if(!bplReady||replBusy)return;const code=replInput.value;if(!code.trim())return;replBusy=true;completion.hidden=true;replInput.value='';resizeInput();replHistory.push(code);replHistoryPos=-1;window.__bplEvalStart=performance.now();setReplState('⌛ Evaluating…','status-busy');bplWorker.postMessage({type:'eval',code})}
+async function executeReplCode(code){
+ if(!bplReady||replBusy||!code.trim())return null;
+ replBusy=true;completion.hidden=true;replInput.value='';resizeInput();replHistory.push(code);replHistoryPos=-1;window.__bplEvalStart=performance.now();setReplState('⌛ Evaluating…','status-busy');
+ try{
+  const r=await jupyterExecute(code);
+  const eventText=r.outputs.map(o=>{
+   const d=o.content?.data;
+   if(d&&typeof d['text/plain']==='string')return d['text/plain'];
+   if(typeof o.content?.text==='string')return o.content.text;
+   if(o.header?.msg_type==='error')return String(o.content?.ename||'Error')+': '+String(o.content?.evalue||'');
+   return '';
+  }).filter(Boolean).join('\n');
+  const err=r.reply?.content?.status==='error' ? String(r.reply.content.ename||'Error')+': '+String(r.reply.content.evalue||'') : '';
+  appendBlock(code,'',eventText,err);
+  document.getElementById('replTime').textContent=(performance.now()-window.__bplEvalStart).toFixed(1)+' ms';
+  document.getElementById('replCount').textContent=replHistory.length+' commands';
+  setReplState(err?'⚠ Error':'● WASM ready',err?'status-error':'status-ready');
+  replInput.focus();
+  return r;
+ }catch(e){
+  appendBlock(code,'','',String(e));
+  setReplState('⚠ Error','status-error');
+  return null;
+ }finally{replBusy=false;}
+}
+function runRepl(){void executeReplCode(replInput.value)}
 function startBpl(){try{bplWorker=new Worker(BPL_WASM_URL,{type:'module'});bplWorker.onmessage=e=>{const m=e.data;if(m.type==='ready'){bplReady=true;setReplState('● WASM ready');replInput.focus();if(m.symbols)loadBplInput(m.symbols)}else if(m.type==='result'){document.getElementById('replTime').textContent=(performance.now()-window.__bplEvalStart).toFixed(1)+' ms';document.getElementById('replCount').textContent=replHistory.length+' commands';const eventText=(m.events||[]).map(e=>e?.data?.['text/plain']??'').filter(Boolean).join('\\n');appendBlock(m.code,m.output||eventText||'',m.output?'':(m.value||''),m.error||'');replBusy=false;setReplState(m.error?'⚠ Error':'● WASM ready',m.error?'status-error':'status-ready');replInput.focus()}};bplWorker.onerror=e=>{bplReady=false;replBusy=false;setReplState('⚠ WASM failed to load','status-error');appendBlock('[startup]','', '', e.message||String(e))}}catch(e){setReplState('⚠ WASM unavailable','status-error')}}
 function showReference(){document.body.classList.remove('repl-mode');document.getElementById('referenceTab').classList.add('active');document.getElementById('replTab').classList.remove('active');document.getElementById('jupyterliteTab').classList.remove('active')}
 function showRepl(){document.body.classList.add('repl-mode');document.getElementById('replTab').classList.add('active');document.getElementById('referenceTab').classList.remove('active');document.getElementById('jupyterliteTab').classList.remove('active');replInput.focus()}
@@ -369,5 +394,189 @@ document.getElementById('jupyterliteTab').onclick=()=>{location.href='jupyterlit
 if(location.hash==='#repl')showRepl();
 else showReference();
 startBpl();
+
+/* WebMCP root-page bridge. It uses Jupyter execute_request semantics against
+   the same persistent BplSession as the visible REPL, so agent and human
+   share computational state without changing the existing keyboard/chord or
+   backtick-completion implementation. */
+const BPL_JUPYTER_SESSION=crypto.randomUUID();
+const jupyterPending=new Map();
+let jupyterBridgeInstalled=false;
+
+function installJupyterBridge(){
+ if(jupyterBridgeInstalled||!bplWorker)return;
+ jupyterBridgeInstalled=true;
+ bplWorker.addEventListener('message',e=>{
+  const m=e.data;
+  const parentId=m?.parent_header?.msg_id;
+  if(!parentId)return;
+  const p=jupyterPending.get(parentId);
+  if(!p)return;
+  p.messages.push(m);
+  if(m.channel==='iopub'&&['execute_result','display_data','stream','error'].includes(m.header?.msg_type))p.outputs.push(m);
+  if(m.channel==='shell'&&m.header?.msg_type==='execute_reply')p.reply=m;
+  if(m.channel==='iopub'&&m.header?.msg_type==='status'&&m.content?.execution_state==='idle')p.idle=true;
+  if(p.reply&&p.idle){
+   clearTimeout(p.timer);jupyterPending.delete(parentId);
+   p.cleanup();p.resolve({reply:p.reply,messages:p.messages,outputs:p.outputs});
+  }
+ });
+}
+
+function waitForBplReady(timeout=10000){
+ if(bplReady)return Promise.resolve();
+ return new Promise((resolve,reject)=>{
+  const started=performance.now();
+  const tick=()=>{
+   if(bplReady)return resolve();
+   if(performance.now()-started>timeout)return reject(new Error('BPL_NOT_READY: BasedPL WASM is not ready'));
+   setTimeout(tick,25);
+  };tick();
+ });
+}
+
+async function jupyterExecute(code,signal){
+ installJupyterBridge();
+ await waitForBplReady();
+ const requestId=crypto.randomUUID();
+ return await new Promise((resolve,reject)=>{
+  const p={resolve,reject,messages:[],outputs:[],reply:null,idle:false,timer:null,cleanup:()=>{}};
+  const onAbort=()=>{jupyterPending.delete(requestId);p.cleanup();reject(new Error('CANCELLED: execution aborted'));};
+  p.cleanup=()=>signal?.removeEventListener('abort',onAbort);
+  p.timer=setTimeout(()=>{jupyterPending.delete(requestId);p.cleanup();reject(new Error('TIMEOUT: execution exceeded 15s'));},15000);
+  signal?.addEventListener('abort',onAbort,{once:true});
+  jupyterPending.set(requestId,p);
+  bplWorker.postMessage({
+   channel:'shell',
+   header:{msg_id:requestId,msg_type:'execute_request',session:BPL_JUPYTER_SESSION,username:'user',version:'5.3'},
+   parent_header:{},metadata:{},
+   content:{code:String(code),silent:false,store_history:true,user_expressions:{},allow_stdin:false,stop_on_error:true}
+  });
+ });
+}
+
+function resetBplSession(){
+ return new Promise((resolve,reject)=>{
+  const onMessage=e=>{
+   if(e.data?.type!=='reset')return;
+   bplWorker.removeEventListener('message',onMessage);
+   if(e.data.ok===false)reject(new Error(e.data.error||'RESET_FAILED'));
+   else{
+    bplReady=true;replBusy=false;replHistory=[];replHistoryPos=-1;replInput.value='';resizeInput();completion.hidden=true;scrollback.innerHTML='';setReplState('● WASM ready');resolve(e.data);
+   }
+  };
+  bplWorker.addEventListener('message',onMessage);
+  bplWorker.postMessage({type:'reset'});
+ });
+}
+
+const rootWebMCPStatus=()=>{
+ let el=document.getElementById('basedpl-webmcp-status');
+ if(!el){
+  el=document.createElement('div');el.id='basedpl-webmcp-status';el.setAttribute('aria-live','polite');
+  Object.assign(el.style,{position:'fixed',right:'12px',bottom:'12px',zIndex:'2147483647',maxWidth:'360px',padding:'10px 12px',borderRadius:'8px',border:'1px solid #bbb',background:'rgba(255,255,255,.96)',color:'#222',font:'12px/1.4 -apple-system,BlinkMacSystemFont,sans-serif',boxShadow:'0 3px 14px rgba(0,0,0,.18)',whiteSpace:'pre-wrap'});
+  document.body.appendChild(el);
+ }
+ return el;
+};
+
+async function registerRootWebMCP(){
+ const mc=document.modelContext;
+ const status=rootWebMCPStatus();
+ if(!mc){status.textContent='WebMCP: document.modelContext unavailable';status.style.borderColor='#c62828';return;}
+ const setStatus=(s,ok=true)=>{status.textContent=s;status.style.borderColor=ok?'#2e7d32':'#c62828';};
+ const controller=new AbortController();
+
+ await mc.registerTool({
+  name:'basedpl_eval',title:'Evaluate BasedPL',
+  description:'Evaluate BasedPL/APL code in the same persistent interpreter used by the visible REPL on this page.',
+  inputSchema:{type:'object',properties:{code:{type:'string',description:'BasedPL code to execute'}},required:['code'],additionalProperties:false},
+  annotations:{readOnlyHint:false,consequentialHint:false,untrustedContentHint:true},
+  execute:async(input,ctx)=>{
+   const r=await jupyterExecute(input.code,ctx.signal);
+   return {status:r.reply?.content?.status||'ok',execution_count:r.reply?.content?.execution_count??null,outputs:r.outputs.map(o=>({type:o.header?.msg_type,...o.content}))};
+  }
+ },{signal:controller.signal});
+
+ await mc.registerTool({
+  name:'basedpl_reset',title:'Reset BasedPL',
+  description:'Reset the persistent BasedPL interpreter used by the visible REPL.',
+  inputSchema:{type:'object',properties:{},additionalProperties:false},
+  annotations:{readOnlyHint:false,consequentialHint:true,untrustedContentHint:false},
+  execute:async()=>await resetBplSession()
+ },{signal:controller.signal});
+
+ await mc.registerTool({
+  name:'navigate',title:'Navigate BasedPL',
+  description:'Navigate the top-level BasedPL application between Reference, REPL, and JupyterLite.',
+  inputSchema:{type:'object',properties:{target:{type:'string',enum:['reference','repl','jupyterlite']}},required:['target'],additionalProperties:false},
+  annotations:{readOnlyHint:false,consequentialHint:false,untrustedContentHint:false},
+  execute:async input=>{
+   const target=String(input.target);
+   if(target==='repl'){history.replaceState(null,'','#repl');showRepl();return {target};}
+   if(target==='reference'){history.replaceState(null,'',location.pathname);showReference();return {target};}
+   if(target==='jupyterlite'){location.href='./jupyterlite/lab/index.html?path=basedpl-display-tests.ipynb';return {target};}
+   throw new Error('INVALID_REQUEST: unknown navigation target');
+  }
+ },{signal:controller.signal});
+
+ await mc.registerTool({
+  name:'repl_view',title:'View REPL',
+  description:'Inspect the visible BasedPL REPL input, cursor, busy state, and recent history.',
+  inputSchema:{type:'object',properties:{},additionalProperties:false},
+  annotations:{readOnlyHint:true,consequentialHint:false,untrustedContentHint:true},
+  execute:async()=>({input:replInput.value,cursor:replInput.selectionStart,busy:replBusy,ready:bplReady,history:replHistory.slice(-10)})
+ },{signal:controller.signal});
+
+ await mc.registerTool({
+  name:'repl_edit',title:'Edit REPL',
+  description:'Edit the visible REPL input without executing it. Use replace, insert, or delete.',
+  inputSchema:{type:'object',properties:{
+   operation:{type:'string',enum:['replace','insert','delete']},
+   text:{type:'string'},start:{type:'integer',minimum:0},end:{type:'integer',minimum:0}
+  },required:['operation'],additionalProperties:false},
+  annotations:{readOnlyHint:false,consequentialHint:true,untrustedContentHint:true},
+  execute:async input=>{
+   const op=String(input.operation);
+   const start=input.start==null?replInput.selectionStart:Number(input.start);
+   const end=input.end==null?replInput.selectionEnd:Number(input.end);
+   if(op==='replace'){replInput.value=String(input.text??'');replInput.setSelectionRange(replInput.value.length,replInput.value.length);}
+   else if(op==='insert'){const t=String(input.text??'');replInput.setRangeText(t,start,end,'end');replInput.setSelectionRange(start+t.length,start+t.length);}
+   else if(op==='delete'){replInput.setRangeText('',start,end,'end');replInput.setSelectionRange(start,start);}
+   else throw new Error('INVALID_REQUEST: unknown REPL edit operation');
+   resizeInput();showCompletion();replInput.focus();
+   return {input:replInput.value,cursor:replInput.selectionStart};
+  }
+ },{signal:controller.signal});
+
+ await mc.registerTool({
+  name:'repl_run',title:'Run REPL',
+  description:'Execute the current visible REPL input, or execute supplied code and synchronize the visible REPL output.',
+  inputSchema:{type:'object',properties:{code:{type:'string'}},additionalProperties:false},
+  annotations:{readOnlyHint:false,consequentialHint:true,untrustedContentHint:true},
+  execute:async(input)=>{
+   const code=typeof input.code==='string'?input.code:replInput.value;
+   if(!code.trim())throw new Error('INVALID_REQUEST: REPL input is empty');
+   if(typeof input.code==='string'){replInput.value=code;resizeInput();}
+   const r=await executeReplCode(code);
+   return r?{status:r.reply?.content?.status||'ok',execution_count:r.reply?.content?.execution_count??null,outputs:r.outputs.map(o=>({type:o.header?.msg_type,...o.content}))}:null;
+  }
+ },{signal:controller.signal});
+
+ if(mc.getTools){
+  try{
+   const names=(await mc.getTools()).map(t=>t.name);
+   setStatus('WebMCP: registered ✓\n'+names.map(n=>'• '+n).join('\n'));
+   console.info('BasedPL root WebMCP tools',names);
+  }catch(e){console.warn('BasedPL root WebMCP verification failed',e);setStatus('WebMCP: registered, verification failed',false);}
+ } else setStatus('WebMCP: registered ✓\nbasedpl_eval\nbasedpl_reset\nnavigate\nrepl_view\nrepl_edit\nrepl_run');
+ return controller;
+}
+
+void registerRootWebMCP().catch(error=>{
+ const s=rootWebMCPStatus();
+ s.textContent='WebMCP: registration failed\n'+String(error);
+ s.style.borderColor='#c62828';
+});
 </script>
 </body></html>
