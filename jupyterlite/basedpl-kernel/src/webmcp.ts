@@ -622,10 +622,13 @@ async function evalCode(
   if (!code) throw new Error('INVALID_REQUEST: code is required');
 
   const outputs: Record<string, unknown>[] = [];
-  // silent+no-history: runs against the same live kernel/state as the notebook (assignments
-  // persist and are visible to later cells), but doesn't bump the notebook's own execution
-  // counter or touch any cell -- a true side-channel eval for verifying syntax before writing it.
-  const future = kernel.requestExecute({ code, silent: true, store_history: false });
+  // silent:true per the Jupyter messaging spec suppresses ALL IOPub broadcast (including the
+  // result itself, not just execution-count bookkeeping) -- confirmed live, outputs came back
+  // empty. silent:false is required to actually receive execute_result/stream/error; this still
+  // runs against the same live kernel/state as the notebook (assignments persist and are visible
+  // to later cells) and never touches any cell -- store_history:false just keeps it out of the
+  // kernel's own input history.
+  const future = kernel.requestExecute({ code, silent: false, store_history: false });
 
   future.onIOPub = msg => {
     const msgType = msg.header.msg_type;
