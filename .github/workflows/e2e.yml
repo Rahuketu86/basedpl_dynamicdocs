@@ -35,4 +35,5 @@ jobs:
         run: |
           node tests/e2e/repl.mjs
           node tests/e2e/jupyterlite-glyph.mjs
+          node tests/e2e/reference.mjs
           node tests/e2e/example-notebooks.mjs

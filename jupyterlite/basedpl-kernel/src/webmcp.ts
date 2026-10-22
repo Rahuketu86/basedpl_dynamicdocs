@@ -175,20 +175,21 @@ const searchReferenceData = (
   const raw = query.trim(); if (!raw) throw new Error('INVALID_REQUEST: query is required');
   const q = raw.toLowerCase(), tokens = searchTokens(raw);
   const allowed = field === 'all'
-    ? ['glyph', 'name', 'key', 'monad', 'dyad', 'note', 'examples']
+    ? ['glyph', 'name', 'key', 'monad', 'dyad', 'note', 'aka', 'examples']
     : [field];
   return data.glyphs.map(g => {
     const fields = {
       glyph: String(g.glyph ?? '').toLowerCase(), name: String(g.name ?? '').toLowerCase(),
       key: String(g.key ?? '').toLowerCase(), monad: String(g.monad ?? '').toLowerCase(),
       dyad: String(g.dyad ?? '').toLowerCase(), note: String(g.note ?? '').toLowerCase(),
+      aka: String(g.aka ?? '').toLowerCase(),
       examples: (data.examples?.[String(g.glyph)] ?? []).map(e => e.join(' ')).join(' ').toLowerCase()
     };
     let score = 0; const matched: string[] = [];
     for (const key of allowed) {
       const value = fields[key as keyof typeof fields];
       if (value === q) { score += key === 'glyph' ? 140 : key === 'name' ? 130 : 90; matched.push(key); continue; }
-      if (value.includes(q)) { score += key === 'glyph' ? 90 : key === 'name' ? 75 : key === 'examples' ? 20 : 35; matched.push(key); }
+      if (value.includes(q)) { score += key === 'glyph' ? 90 : key === 'name' ? 75 : key === 'examples' || key === 'aka' ? 20 : 35; matched.push(key); }
       const hits = tokens.filter(token => value.includes(token)).length;
       if (tokens.length > 1 && hits) {
         score += hits * (key === 'name' ? 30 : key === 'glyph' ? 35 : key === 'examples' ? 8 : 12);

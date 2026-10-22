@@ -64,6 +64,9 @@ jobs:
           wasm-bindgen "$WASM" --target web --out-dir build/bpl
           rm -rf build/diagnostic
           wasm-bindgen "$WASM" --target nodejs --out-dir build/diagnostic
+          # The interpreter's own glyph table, kept in the cached build/bpl: the Reference data below is
+          # generated from it, so a cache hit still has exactly the table this WASM was built with.
+          node -e "require('fs').writeFileSync('build/bpl/symbols.json', require('./build/diagnostic/basedpl_web.js').symbols())"
           node - <<'NODE'
           const { BplSession } = require('./build/diagnostic/basedpl_web.js');
           const s = new BplSession();
@@ -112,6 +115,17 @@ jobs:
         with:
           path: build/bpl
           key: basedpl-wasm-${{ hashFiles('web/src/lib.rs', 'web/Cargo.toml', 'web/Cargo.lock', 'scripts/prepare_basedpl_wasm.sh') }}
+
+      # Generate the Reference tab's glyph cards (names, docs links, chords), the Mac keyboard and
+      # dead-key follow-ups, JupyterLite's keyboard rows and the agent tools' reference-data.json
+      # from the pinned upstream BasedPL, instead of keeping hand-written copies that drift (renamed
+      # docs pages had silently killed ~70 links). Runs on every build, cache hit or not: the symbol
+      # table comes from the cached WASM build, and `prepare` re-vendors the upstream keyboard/docs
+      # inputs at the pinned REV (a no-op right after a cache miss, which already checked it out).
+      - name: Generate Reference data from upstream
+        run: |
+          bash scripts/prepare_basedpl_wasm.sh
+          python3 scripts/refresh_reference_glyphs.py --build
 
       - name: Install Node
         uses: actions/setup-node@v4

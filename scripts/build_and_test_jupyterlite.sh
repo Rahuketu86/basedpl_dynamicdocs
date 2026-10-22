@@ -32,9 +32,19 @@ wasm-bindgen "$WASM" --target web --out-dir build/bpl
 cp build/bpl/basedpl_web.js jupyterlite/basedpl-kernel/src/basedpl_web.js
 cp build/bpl/basedpl_web_bg.wasm jupyterlite/basedpl-kernel/src/basedpl_web_bg.wasm
 
-echo "===STAGE:verify-example-notebooks==="
 rm -rf build/diagnostic
 wasm-bindgen "$WASM" --target nodejs --out-dir build/diagnostic
+
+echo "===STAGE:reference-data==="
+# Same steps CI runs: dump the interpreter's glyph table, generate the Reference/REPL/notebook glyph
+# cards, keyboard and agent-tool data from it, then gate on (a) the committed copies being current
+# and (b) the data itself: docs links exist, the keyboard matches the real typing engine, search works.
+node -e "require('fs').writeFileSync('build/bpl/symbols.json', require('./build/diagnostic/basedpl_web.js').symbols())"
+python3 scripts/refresh_reference_glyphs.py --build
+python3 scripts/refresh_reference_glyphs.py --check
+node tests/reference-data.mjs build/bpl/symbols.json
+
+echo "===STAGE:verify-example-notebooks==="
 node scripts/verify_example_notebooks.mjs
 
 echo "===STAGE:extension-build==="
@@ -69,6 +79,7 @@ fi
 echo "===STAGE:e2e-test==="
 BASE_URL="http://127.0.0.1:${PORT}/" node tests/e2e/repl.mjs
 BASE_URL="http://127.0.0.1:${PORT}/" node tests/e2e/jupyterlite-glyph.mjs
+BASE_URL="http://127.0.0.1:${PORT}/" node tests/e2e/reference.mjs
 BASE_URL="http://127.0.0.1:${PORT}/" node tests/e2e/example-notebooks.mjs
 
 kill "$SERVER_PID" 2>/dev/null || true

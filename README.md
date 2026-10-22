@@ -42,6 +42,12 @@ The interpreter runs in a Web Worker so evaluation does not block the UI thread.
     .github/workflows/deploy-cloudflare.yml
                                     Manual: redeploy the latest successful Pages build to Cloudflare
     build.py                        Reference-page generator
+    scripts/refresh_reference_glyphs.py
+                                    Generates the glyph cards, keyboard and follow-ups from upstream
+    scripts/vendor/                 Upstream keyboards.py + US key map + docs page names (vendored by prepare)
+    reference-data.json             The same data for the WebMCP agent tools (generated, see below)
+    tests/reference-data.mjs        Browser-free checks of that data against upstream
+    tests/e2e/reference.mjs         Browser check: Reference tab, REPL and notebook page
 
 ## Interpreter integration
 
@@ -152,6 +158,50 @@ deploy; it also means a flaky/slow E2E run can no longer make
 `deploy-cloudflare.yml`'s "latest successful Pages build" lookup
 (which checks the whole `pages.yml` run's status) skip a perfectly good,
 already-deployed build.
+
+## Reference, REPL and notebook glyph data (generated from upstream)
+
+The Reference tab's glyph cards, the Mac keyboard shown in the Reference tab, the REPL and the
+JupyterLite notebook page, the dead-key follow-ups, and `reference-data.json` (what the WebMCP agent
+tools search and fetch docs with) used to be written by hand. They drifted from the language: upstream
+renamed its docs pages after Unicode names (`add` -> `plus`, `floor` -> `downstile`), so about 70 of
+the 103 "docs" links went dead; chords changed (Option-l now types `↦`, not `→`); some glyphs were
+retired (`⍲ ⍱ → ⌾`) and new ones added (`| ⊼ ⊽ ↦ ᵇ`). They are now **generated** from the pinned
+upstream revision, so they cannot disagree with the interpreter this build ships:
+
+| Generated | From |
+|---|---|
+| each card's name, docs slug, Option-key chord, function names | the interpreter's own symbol table (`symbols()`, dumped to `build/bpl/symbols.json` by the WASM build) |
+| the Mac keyboard map and the dead-key follow-ups | upstream's own `keyboards.py` run over `layout.json` (the code behind upstream's docs keyboard page) |
+| JupyterLite's keyboard (`keyboard_rows.js`), `reference-data.json` | the same result, so all three surfaces show one keyboard |
+| the check that every docs link exists | the page names of the pinned revision's `nbs/glyphs/` |
+
+Hand-written text is kept only where upstream has none -- operator and syntax descriptions, notes, and
+the examples. Old names and descriptions stay searchable through a hidden `aka` field (so "floor",
+"dash", "gcd", or a retired glyph like `⍲` still finds its card). Two upstream details are mirrored
+on purpose: key faces list the primitives typed with no Option (`+` on the `=` key, `<` `,` on the comma key)
+ahead of the Option glyphs, and leave out the super/subscript digits, which only exist as dead-key follow-ups
+(they are in the follow-up table); in the browser Option-Shift-3 types `#`, not `³` (`alt_aliases` in `layout.json`; upstream's
+docs say the same), so the keyboards omit that chord; and glyphs upstream retired are dropped, or
+replaced in place where there is a direct successor (`⍲ -> ⊼`, `⍱ -> ⊽`, `→ -> ↦`).
+
+It is part of the build: `.github/workflows/pages.yml` and `scripts/build_and_test_jupyterlite.sh` dump
+the symbol table, run `python3 scripts/refresh_reference_glyphs.py --build`, and `build.py` deploys
+the generated data. The same script also keeps the committed copies (`src/index.html`'s `DATA`,
+`reference-data.json`, `jupyterlite/basedpl-kernel/src/keyboard_rows.js`) current for local work:
+
+    bash scripts/prepare_basedpl_wasm.sh                 # vendors the upstream inputs at the pinned REV
+    python3 scripts/refresh_reference_glyphs.py          # rewrite the committed copies
+    python3 scripts/refresh_reference_glyphs.py --check  # exit 1 if they are stale or a docs link is dead
+    node tests/reference-data.mjs build/bpl/symbols.json # docs links, keyboard vs the typing engine, search
+
+The local pipeline (`scripts/pipeline.sh`) runs the `--check` and the data test as a gate, and the
+browser check (`tests/e2e/reference.mjs`) covers the Reference tab, the REPL and the notebook page.
+
+**When you bump the pinned revision** in `scripts/prepare_basedpl_wasm.sh`: run `prepare`, run
+`refresh_reference_glyphs.py`, commit what changed (including `scripts/vendor/` and `web/Cargo.lock`),
+and read the script's "replaced / added / dropped" lines -- a glyph upstream retires with no entry in
+`SUCCESSORS` (top of that script) is dropped, which you may want to turn into a replacement.
 
 ## WASM compatibility fixes
 

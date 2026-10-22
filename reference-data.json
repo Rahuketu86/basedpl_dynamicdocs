@@ -2,66 +2,83 @@
   "glyphs": [
     {
       "glyph": "+",
-      "name": "add",
+      "name": "plus",
       "key": "",
       "monad": "conjugate",
-      "dyad": "plus",
+      "dyad": "add",
       "note": "",
-      "slug": "add"
+      "slug": "plus",
+      "aka": "加"
     },
     {
       "glyph": "-",
-      "name": "dash",
+      "name": "minus",
       "key": "",
       "monad": "negate",
       "dyad": "subtract",
       "note": "",
-      "slug": "dash"
+      "slug": "minus",
+      "aka": "dash 减 減"
     },
     {
       "glyph": "×",
-      "name": "mul",
+      "name": "times",
       "key": "Alt-m",
       "monad": "sign",
-      "dyad": "times",
+      "dyad": "multiply",
       "note": "",
-      "slug": "mul"
+      "slug": "times",
+      "aka": "乘号 乘號"
     },
     {
       "glyph": "÷",
-      "name": "div",
+      "name": "obelus",
       "key": "Alt-u",
       "monad": "reciprocal",
       "dyad": "divide",
       "note": "",
-      "slug": "div"
+      "slug": "obelus",
+      "aka": "除"
     },
     {
       "glyph": "⌊",
-      "name": "floor",
+      "name": "downstile",
       "key": "Alt-d",
       "monad": "floor",
-      "dyad": "min",
+      "dyad": "minimum",
       "note": "",
-      "slug": "floor"
+      "slug": "downstile",
+      "aka": "下"
     },
     {
       "glyph": "⌈",
-      "name": "ceiling",
+      "name": "upstile",
       "key": "Alt-s",
       "monad": "ceiling",
-      "dyad": "max",
+      "dyad": "maximum",
       "note": "",
-      "slug": "ceiling"
+      "slug": "upstile",
+      "aka": "上"
     },
     {
-      "glyph": "\\",
+      "glyph": "|",
       "name": "stile",
       "key": "",
       "monad": "magnitude",
       "dyad": "residue",
       "note": "",
-      "slug": "stile"
+      "slug": "stile",
+      "aka": "绝余 絕餘"
+    },
+    {
+      "glyph": "\\",
+      "name": "backslash",
+      "key": "",
+      "monad": "scan",
+      "dyad": "",
+      "note": "",
+      "slug": "backslash",
+      "aka": "累"
     },
     {
       "glyph": "*",
@@ -70,25 +87,28 @@
       "monad": "exponential",
       "dyad": "exponent",
       "note": "",
-      "slug": "star"
+      "slug": "star",
+      "aka": "幂 冪"
     },
     {
       "glyph": "⍟",
-      "name": "log",
-      "key": "Alt-o *",
-      "monad": "logarithm",
-      "dyad": "log",
+      "name": "circle-star",
+      "key": "Alt-o 8",
+      "monad": "natural-log",
+      "dyad": "logarithm",
       "note": "",
-      "slug": "log"
+      "slug": "circle-star",
+      "aka": "对 對"
     },
     {
       "glyph": "○",
       "name": "circle",
       "key": "Alt-o",
       "monad": "cis",
-      "dyad": "circle",
+      "dyad": "circular",
       "note": "",
-      "slug": "circle"
+      "slug": "circle",
+      "aka": "圆 圓"
     },
     {
       "glyph": "π",
@@ -97,52 +117,58 @@
       "monad": "pi-times",
       "dyad": "pi-ratio",
       "note": "",
-      "slug": "pi"
+      "slug": "pi",
+      "aka": "周"
     },
     {
       "glyph": "√",
-      "name": "root",
+      "name": "radical",
       "key": "Alt-3",
       "monad": "sqrt",
       "dyad": "root",
       "note": "",
-      "slug": "root"
+      "slug": "radical",
+      "aka": "根"
     },
     {
       "glyph": "!",
-      "name": "factorial",
+      "name": "exclamation",
       "key": "",
       "monad": "factorial",
       "dyad": "binomial",
       "note": "",
-      "slug": "factorial"
+      "slug": "exclamation",
+      "aka": "阶拣 階揀"
     },
     {
       "glyph": "⍭",
-      "name": "prime",
-      "key": "Alt-\\ ~",
+      "name": "stile-tilde",
+      "key": "Alt-\\",
       "monad": "prime",
       "dyad": "prime-mode",
       "note": "",
-      "slug": "prime"
+      "slug": "stile-tilde",
+      "aka": "素"
     },
     {
       "glyph": "⨸",
-      "name": "factor",
+      "name": "circle-divide",
       "key": "Alt-o u",
       "monad": "factors",
       "dyad": "factor-spec",
       "note": "",
-      "slug": "factor"
+      "slug": "circle-divide",
+      "aka": "因"
     },
     {
       "glyph": "⌻",
-      "name": "polynomial",
+      "name": "quad-jot",
       "key": "Alt-q t",
       "monad": "roots",
       "dyad": "polyval",
       "note": "",
-      "slug": "polynomial"
+      "slug": "quad-jot",
+      "aka": "polynomial 零值"
     },
     {
       "glyph": "¿",
@@ -151,43 +177,48 @@
       "monad": "roll",
       "dyad": "deal",
       "note": "",
-      "slug": "inverted-question"
+      "slug": "inverted-question",
+      "aka": "掷抽 擲抽"
     },
     {
       "glyph": "∨",
-      "name": "or",
+      "name": "vee",
       "key": "Alt-9",
       "monad": "real-imag",
-      "dyad": "gcd",
+      "dyad": "or",
       "note": "",
-      "slug": "or"
+      "slug": "vee",
+      "aka": "gcd 析或"
     },
     {
       "glyph": "∧",
-      "name": "and",
+      "name": "wedge",
       "key": "Alt-0",
       "monad": "polar",
-      "dyad": "lcm",
+      "dyad": "and",
       "note": "",
-      "slug": "and"
+      "slug": "wedge",
+      "aka": "lcm 极且 極且"
     },
     {
-      "glyph": "⍲",
-      "name": "nand",
-      "key": "Alt-0 ~",
+      "glyph": "⊼",
+      "name": "wedge-bar",
+      "key": "Alt-Minus 0",
       "monad": "square",
       "dyad": "nand",
       "note": "",
-      "slug": "nand"
+      "slug": "wedge-bar",
+      "aka": "⍲ 方否"
     },
     {
-      "glyph": "⍱",
-      "name": "nor",
-      "key": "Alt-9 ~",
+      "glyph": "⊽",
+      "name": "vee-bar",
+      "key": "Alt-Minus 9",
       "monad": "double",
       "dyad": "nor",
       "note": "",
-      "slug": "nor"
+      "slug": "vee-bar",
+      "aka": "⍱ 双莫 雙莫"
     },
     {
       "glyph": "~",
@@ -196,79 +227,88 @@
       "monad": "not",
       "dyad": "without",
       "note": "",
-      "slug": "tilde"
+      "slug": "tilde",
+      "aka": "非无 非無"
     },
     {
       "glyph": "=",
-      "name": "equal",
+      "name": "equals",
       "key": "",
       "monad": "classify",
       "dyad": "equal",
       "note": "",
-      "slug": "equal"
+      "slug": "equals",
+      "aka": "等"
     },
     {
       "glyph": "≠",
-      "name": "not-equal",
+      "name": "not-equals",
       "key": "Alt-Shift-=",
       "monad": "unique-mask",
       "dyad": "not-equal",
       "note": "",
-      "slug": "not-equal"
+      "slug": "not-equals",
+      "aka": "别初 別初"
     },
     {
       "glyph": "<",
-      "name": "less",
+      "name": "less-than",
       "key": "",
-      "monad": "—",
+      "monad": "sort-up",
       "dyad": "less",
       "note": "",
-      "slug": "less"
+      "slug": "less-than",
+      "aka": "小"
     },
     {
       "glyph": "≤",
-      "name": "less-or-equal",
-      "key": "Alt-<",
+      "name": "less-than-or-equal",
+      "key": "Alt-Shift-,",
       "monad": "decrement",
       "dyad": "less-equal",
       "note": "",
-      "slug": "less-or-equal"
+      "slug": "less-than-or-equal",
+      "aka": "less-or-equal 限退"
     },
     {
       "glyph": ">",
-      "name": "greater",
+      "name": "greater-than",
       "key": "",
-      "monad": "—",
+      "monad": "sort-down",
       "dyad": "greater",
       "note": "",
-      "slug": "greater"
+      "slug": "greater-than",
+      "aka": "大"
     },
     {
       "glyph": "≥",
-      "name": "greater-or-equal",
-      "key": "Alt->",
+      "name": "greater-than-or-equal",
+      "key": "Alt-Shift-.",
       "monad": "increment",
       "dyad": "greater-equal",
       "note": "",
-      "slug": "greater-or-equal"
+      "slug": "greater-than-or-equal",
+      "aka": "greater-or-equal 达进 達進"
     },
     {
       "glyph": "≡",
-      "name": "match",
+      "name": "equal-underbar",
       "key": "Alt-=",
       "monad": "depth",
       "dyad": "match",
       "note": "",
-      "slug": "match"
+      "slug": "equal-underbar",
+      "aka": "同深"
     },
     {
       "glyph": "≢",
-      "name": "tally",
-      "key": "Alt-= /",
+      "name": "equal-underbar-slash",
+      "key": "Alt-Shift-/",
       "monad": "tally",
       "dyad": "not-match",
       "note": "",
-      "slug": "tally"
+      "slug": "equal-underbar-slash",
+      "aka": "数异 數異"
     },
     {
       "glyph": "⍴",
@@ -277,7 +317,8 @@
       "monad": "shape",
       "dyad": "reshape",
       "note": "",
-      "slug": "rho"
+      "slug": "rho",
+      "aka": "形"
     },
     {
       "glyph": ",",
@@ -286,115 +327,128 @@
       "monad": "ravel",
       "dyad": "catenate",
       "note": "",
-      "slug": "comma"
+      "slug": "comma",
+      "aka": "连 連"
     },
     {
       "glyph": "⍪",
-      "name": "table",
+      "name": "comma-bar",
       "key": "Alt-Minus ,",
       "monad": "table",
       "dyad": "catenate-first",
       "note": "",
-      "slug": "table"
+      "slug": "comma-bar",
+      "aka": "接矩"
     },
     {
       "glyph": "⌽",
-      "name": "reverse",
-      "key": "Alt-|",
+      "name": "circle-stile",
+      "key": "Alt-2",
       "monad": "reverse",
       "dyad": "rotate",
       "note": "",
-      "slug": "reverse"
+      "slug": "circle-stile",
+      "aka": "转 轉"
     },
     {
       "glyph": "⊖",
-      "name": "reverse-first",
+      "name": "circle-bar",
       "key": "Alt-o Minus",
       "monad": "reverse-first",
       "dyad": "rotate-first",
       "note": "",
-      "slug": "reverse-first"
+      "slug": "circle-bar",
+      "aka": "纵 縱"
     },
     {
       "glyph": "⍉",
-      "name": "transpose",
+      "name": "circle-backslash",
       "key": "Alt-o \\",
       "monad": "transpose",
       "dyad": "reorder-axes",
       "note": "",
-      "slug": "transpose"
+      "slug": "circle-backslash",
+      "aka": "翻"
     },
     {
       "glyph": "↑",
-      "name": "take",
+      "name": "up-arrow",
       "key": "Alt-k",
       "monad": "first",
       "dyad": "take",
       "note": "",
-      "slug": "take"
+      "slug": "up-arrow",
+      "aka": "取"
     },
     {
       "glyph": "↓",
-      "name": "drop",
+      "name": "down-arrow",
       "key": "Alt-j",
       "monad": "split",
       "dyad": "drop",
       "note": "",
-      "slug": "drop"
+      "slug": "down-arrow",
+      "aka": "去拆"
     },
     {
       "glyph": "↕",
-      "name": "windows",
-      "key": "Alt-k j",
-      "monad": "—",
+      "name": "up-down-arrow",
+      "key": "Alt-Shift-k",
+      "monad": "pairs",
       "dyad": "windows",
       "note": "",
-      "slug": "windows"
+      "slug": "up-down-arrow",
+      "aka": "窗"
     },
     {
       "glyph": "⊂",
-      "name": "enclose",
+      "name": "left-shoe",
       "key": "Alt-z",
       "monad": "enclose",
       "dyad": "partitioned-enclose",
       "note": "",
-      "slug": "enclose"
+      "slug": "left-shoe",
+      "aka": "包"
     },
     {
       "glyph": "⊆",
-      "name": "nest",
-      "key": "Alt-z _",
+      "name": "left-shoe-underbar",
+      "key": "Alt-Minus z",
       "monad": "nest",
       "dyad": "partition",
       "note": "",
-      "slug": "nest"
+      "slug": "left-shoe-underbar",
+      "aka": "巢段"
     },
     {
       "glyph": "⊃",
-      "name": "mix",
+      "name": "right-shoe",
       "key": "Alt-x",
       "monad": "mix",
       "dyad": "pick",
       "note": "",
-      "slug": "mix"
+      "slug": "right-shoe",
+      "aka": "选合 選合"
     },
     {
       "glyph": "⌷",
       "name": "squad",
-      "key": "Alt-q",
-      "monad": "",
-      "dyad": "materialise / index",
+      "key": "Alt-q \\",
+      "monad": "materialise",
+      "dyad": "index",
       "note": "",
-      "slug": "squad"
+      "slug": "squad",
+      "aka": "materialise / index 索"
     },
     {
       "glyph": "⍳",
       "name": "iota",
       "key": "Alt-i",
-      "monad": "iota",
+      "monad": "indices",
       "dyad": "index-of",
       "note": "",
-      "slug": "iota"
+      "slug": "iota",
+      "aka": "位"
     },
     {
       "glyph": ":",
@@ -403,421 +457,458 @@
       "monad": "unkey",
       "dyad": "keyed",
       "note": "",
-      "slug": "colon"
+      "slug": "colon",
+      "aka": "键卸 鍵卸"
     },
     {
       "glyph": "⍸",
-      "name": "where",
-      "key": "Alt-i _",
+      "name": "iota-underbar",
+      "key": "Alt-Minus i",
       "monad": "where",
       "dyad": "interval-index",
       "note": "",
-      "slug": "where"
+      "slug": "iota-underbar",
+      "aka": "处间 處間"
     },
     {
       "glyph": "∊",
-      "name": "member",
+      "name": "epsilon",
       "key": "Alt-e",
       "monad": "enlist",
       "dyad": "member",
       "note": "",
-      "slug": "member"
+      "slug": "epsilon",
+      "aka": "属展 屬展"
     },
     {
       "glyph": "∪",
-      "name": "union",
+      "name": "down-shoe",
       "key": "Alt-v",
       "monad": "unique",
       "dyad": "union",
       "note": "",
-      "slug": "union"
+      "slug": "down-shoe",
+      "aka": "并独 併獨"
     },
     {
       "glyph": "∩",
-      "name": "intersection",
+      "name": "up-shoe",
       "key": "Alt-c",
-      "monad": "—",
+      "monad": "duplicates",
       "dyad": "intersection",
       "note": "",
-      "slug": "intersection"
+      "slug": "up-shoe",
+      "aka": "交重"
     },
     {
       "glyph": "⍷",
-      "name": "find",
-      "key": "Alt-e _",
-      "monad": "—",
+      "name": "epsilon-underbar",
+      "key": "Alt-Minus e",
+      "monad": "groups",
       "dyad": "find",
       "note": "",
-      "slug": "find"
+      "slug": "epsilon-underbar",
+      "aka": "寻群 尋群"
     },
     {
       "glyph": "⍋",
-      "name": "grade-up",
-      "key": "Alt-7",
-      "monad": "",
-      "dyad": "grade-up",
+      "name": "delta-stile",
+      "key": "Alt-\\ 7",
+      "monad": "grade-up",
+      "dyad": "grade-up-by",
       "note": "",
-      "slug": "grade-up"
+      "slug": "delta-stile",
+      "aka": "升"
     },
     {
       "glyph": "⍒",
-      "name": "grade-down",
-      "key": "Alt-g",
-      "monad": "",
-      "dyad": "grade-down",
+      "name": "del-stile",
+      "key": "Alt-\\ g",
+      "monad": "grade-down",
+      "dyad": "grade-down-by",
       "note": "",
-      "slug": "grade-down"
+      "slug": "del-stile",
+      "aka": "降"
     },
     {
       "glyph": "#",
       "name": "hash",
       "key": "",
-      "monad": "—",
+      "monad": "runs",
       "dyad": "replicate",
       "note": "",
-      "slug": "hash"
+      "slug": "hash",
+      "aka": "复 複"
     },
     {
       "glyph": "⊤",
-      "name": "encode",
+      "name": "down-tack",
       "key": "Alt-n",
       "monad": "binary-encode",
       "dyad": "encode",
       "note": "",
-      "slug": "encode"
+      "slug": "down-tack",
+      "aka": "编 編"
     },
     {
       "glyph": "⊥",
-      "name": "decode",
+      "name": "up-tack",
       "key": "Alt-b",
       "monad": "binary-decode",
       "dyad": "decode",
       "note": "",
-      "slug": "decode"
+      "slug": "up-tack",
+      "aka": "译 譯"
     },
     {
       "glyph": "⌹",
       "name": "domino",
       "key": "Alt-q u",
-      "monad": "inverse",
+      "monad": "matrix-inverse",
       "dyad": "matrix-divide",
       "note": "",
-      "slug": "domino"
+      "slug": "domino",
+      "aka": "解逆"
     },
     {
       "glyph": "⊣",
-      "name": "left",
+      "name": "left-tack",
       "key": "Alt-;",
       "monad": "same-left",
       "dyad": "left",
       "note": "",
-      "slug": "left"
+      "slug": "left-tack",
+      "aka": "左"
     },
     {
       "glyph": "⊢",
-      "name": "right",
+      "name": "right-tack",
       "key": "Alt-'",
       "monad": "same",
       "dyad": "right",
       "note": "",
-      "slug": "right"
+      "slug": "right-tack",
+      "aka": "右"
     },
     {
       "glyph": "⍎",
-      "name": "execute",
-      "key": "Alt-b t",
+      "name": "hydrant",
+      "key": "Alt-o b",
       "monad": "execute",
       "dyad": "execute-in",
       "note": "",
-      "slug": "execute"
+      "slug": "hydrant",
+      "aka": "行"
     },
     {
       "glyph": "⍕",
-      "name": "format",
-      "key": "Alt-n t",
+      "name": "thorn",
+      "key": "Alt-o n",
       "monad": "format",
       "dyad": "format-spec",
       "note": "",
-      "slug": "format"
+      "slug": "thorn",
+      "aka": "文"
     },
     {
       "glyph": "/",
       "name": "slash",
       "key": "",
-      "monad": "",
+      "monad": "reduce",
       "dyad": "Reduce / seeded reduce last",
       "note": "",
-      "slug": "slash"
+      "slug": "slash",
+      "aka": "总 總"
     },
     {
       "glyph": "⌿",
       "name": "slash-bar",
       "key": "Alt-Minus /",
-      "monad": "",
+      "monad": "reduce-first",
       "dyad": "Reduce / seeded reduce first",
       "note": "",
-      "slug": "slash-bar"
+      "slug": "slash-bar",
+      "aka": "汇 匯"
     },
     {
       "glyph": "⍀",
       "name": "backslash-bar",
       "key": "Alt-Minus \\",
-      "monad": "",
+      "monad": "scan-first",
       "dyad": "Scan / seeded scan first",
       "note": "",
-      "slug": "backslash-bar"
+      "slug": "backslash-bar",
+      "aka": "续 續"
     },
     {
       "glyph": "¨",
-      "name": "each",
+      "name": "diaeresis",
       "key": "Alt-1",
-      "monad": "",
+      "monad": "each",
       "dyad": "Each",
       "note": "",
-      "slug": "each"
+      "slug": "diaeresis",
+      "aka": "遍"
     },
     {
       "glyph": "⍨",
-      "name": "commute",
-      "key": "Alt-1 ~",
-      "monad": "",
+      "name": "tilde-diaeresis",
+      "key": "Alt-1 `",
+      "monad": "self",
       "dyad": "Self / commute / constant",
       "note": "",
-      "slug": "commute"
+      "slug": "tilde-diaeresis",
+      "aka": "己换 己換"
     },
     {
       "glyph": "↣",
-      "name": "before",
+      "name": "right-tail-arrow",
       "key": "Alt-.",
-      "monad": "",
+      "monad": "before",
       "dyad": "Before / bind left",
       "note": "",
-      "slug": "before"
+      "slug": "right-tail-arrow",
+      "aka": "先"
     },
     {
       "glyph": "↢",
-      "name": "after",
+      "name": "left-tail-arrow",
       "key": "Alt-,",
-      "monad": "",
+      "monad": "after",
       "dyad": "After / bind right",
       "note": "",
-      "slug": "after"
+      "slug": "left-tail-arrow",
+      "aka": "后 後"
     },
     {
       "glyph": "⍤",
-      "name": "rank",
+      "name": "jot-diaeresis",
       "key": "Alt-1 t",
-      "monad": "",
+      "monad": "rank",
       "dyad": "Rank",
       "note": "",
-      "slug": "rank"
+      "slug": "jot-diaeresis",
+      "aka": "秩"
     },
     {
       "glyph": "∘",
-      "name": "atop",
+      "name": "jot",
       "key": "Alt-t",
-      "monad": "",
+      "monad": "atop",
       "dyad": "Atop",
       "note": "",
-      "slug": "atop"
+      "slug": "jot",
+      "aka": "承"
     },
     {
       "glyph": "⍠",
-      "name": "axis",
-      "key": "Alt-q :",
-      "monad": "",
+      "name": "quad-colon",
+      "key": "Alt-q ;",
+      "monad": "axis",
       "dyad": "Apply along axes",
       "note": "",
-      "slug": "axis"
+      "slug": "quad-colon",
+      "aka": "轴 軸"
     },
     {
       "glyph": "⍥",
-      "name": "over",
+      "name": "circle-diaeresis",
       "key": "Alt-1 o",
-      "monad": "",
+      "monad": "over",
       "dyad": "Over",
       "note": "",
-      "slug": "over"
+      "slug": "circle-diaeresis",
+      "aka": "经 經"
     },
     {
       "glyph": ".",
       "name": "dot",
       "key": "",
-      "monad": "",
+      "monad": "determinant",
       "dyad": "Inner product",
       "note": "",
-      "slug": "dot"
+      "slug": "dot",
+      "aka": "inner-product 内 內"
     },
     {
       "glyph": "⊗",
-      "name": "outer-product",
+      "name": "circle-times",
       "key": "Alt-o m",
-      "monad": "",
+      "monad": "outer-product",
       "dyad": "Outer product",
       "note": "",
-      "slug": "outer-product"
+      "slug": "circle-times",
+      "aka": "表"
     },
     {
       "glyph": "⌸",
-      "name": "key",
+      "name": "quad-equal",
       "key": "Alt-q =",
-      "monad": "",
+      "monad": "key",
       "dyad": "Key",
       "note": "",
-      "slug": "key"
+      "slug": "quad-equal",
+      "aka": "组 組"
     },
     {
       "glyph": "⍣",
-      "name": "power",
-      "key": "Alt-1 *",
-      "monad": "",
+      "name": "star-diaeresis",
+      "key": "Alt-1 8",
+      "monad": "power",
       "dyad": "Iterate / invert / fixed point",
       "note": "",
-      "slug": "power"
+      "slug": "star-diaeresis",
+      "aka": "次止"
     },
     {
       "glyph": "⇄",
-      "name": "inverse-pair",
+      "name": "right-left-arrows",
       "key": "Alt-4",
-      "monad": "",
+      "monad": "optimize",
       "dyad": "Attach explicit inverse",
       "note": "",
-      "slug": "inverse-pair"
+      "slug": "right-left-arrows",
+      "aka": "inverse-pair 优 優"
     },
     {
       "glyph": "⊘",
-      "name": "valences",
+      "name": "circle-slash",
       "key": "Alt-o /",
-      "monad": "",
+      "monad": "valences",
       "dyad": "Call with one/two arguments",
       "note": "",
-      "slug": "valences"
-    },
-    {
-      "glyph": "⌾",
-      "name": "under",
-      "key": "Alt-o t",
-      "monad": "",
-      "dyad": "Apply under",
-      "note": "",
-      "slug": "under"
+      "slug": "circle-slash",
+      "aka": "兼"
     },
     {
       "glyph": "∂",
-      "name": "derivative",
+      "name": "partial",
       "key": "Alt-f",
-      "monad": "",
+      "monad": "derivative",
       "dyad": "Gradient / VJP",
       "note": "",
-      "slug": "derivative"
+      "slug": "partial",
+      "aka": "导梯 導梯"
     },
     {
       "glyph": "⍚",
-      "name": "agenda",
-      "key": "Alt-` _",
-      "monad": "",
+      "name": "diamond-underbar",
+      "key": "Alt-Minus `",
+      "monad": "agenda",
       "dyad": "Select and call one function",
       "note": "",
-      "slug": "agenda"
+      "slug": "diamond-underbar",
+      "aka": "择 擇"
     },
     {
       "glyph": "@",
       "name": "at",
       "key": "",
-      "monad": "",
+      "monad": "under",
       "dyad": "Functional amend",
       "note": "",
-      "slug": "at"
+      "slug": "at",
+      "aka": "于 於"
     },
     {
       "glyph": "⌺",
-      "name": "stencil",
+      "name": "quad-diamond",
       "key": "Alt-q `",
-      "monad": "",
+      "monad": "stencil",
       "dyad": "Stencil",
       "note": "",
-      "slug": "stencil"
+      "slug": "quad-diamond",
+      "aka": "邻 鄰"
     },
     {
       "glyph": "←",
-      "name": "assign",
+      "name": "left-arrow",
       "key": "Alt-h",
-      "monad": "",
+      "monad": "assign",
       "dyad": "Assignment",
       "note": "",
-      "slug": "assign"
+      "slug": "left-arrow",
+      "aka": "是"
     },
     {
-      "glyph": "→",
-      "name": "pipe",
+      "glyph": "↦",
+      "name": "right-arrow-from-bar",
       "key": "Alt-l",
-      "monad": "",
-      "dyad": "Left-to-right application",
+      "monad": "range",
+      "dyad": "to",
       "note": "",
-      "slug": "pipe"
+      "slug": "right-arrow-from-bar",
+      "aka": "pipe Left-to-right application → 至"
     },
     {
       "glyph": "⍺",
       "name": "alpha",
       "key": "Alt-a",
-      "monad": "",
+      "monad": "left-argument",
       "dyad": "Left argument",
       "note": "",
-      "slug": "alpha"
+      "slug": "alpha",
+      "aka": "甲"
     },
     {
       "glyph": "⍵",
       "name": "omega",
       "key": "Alt-w",
-      "monad": "",
+      "monad": "right-argument",
       "dyad": "Right argument",
       "note": "",
-      "slug": "omega"
+      "slug": "omega",
+      "aka": "乙"
     },
     {
       "glyph": "⍶",
       "name": "alpha-underbar",
-      "key": "Alt-a _",
-      "monad": "",
+      "key": "Alt-Minus a",
+      "monad": "left-operand",
       "dyad": "Left operand",
       "note": "",
-      "slug": "alpha-underbar"
+      "slug": "alpha-underbar",
+      "aka": "丙"
     },
     {
       "glyph": "⍹",
       "name": "omega-underbar",
-      "key": "Alt-w _",
-      "monad": "",
+      "key": "Alt-Minus w",
+      "monad": "right-operand",
       "dyad": "Right operand",
       "note": "",
-      "slug": "omega-underbar"
+      "slug": "omega-underbar",
+      "aka": "丁"
     },
     {
       "glyph": "∇",
       "name": "del",
       "key": "Alt-g",
-      "monad": "",
+      "monad": "recursion",
       "dyad": "Function/operator self-reference",
       "note": "",
-      "slug": "del"
+      "slug": "del",
+      "aka": "递 遞"
     },
     {
       "glyph": "⍢",
       "name": "del-diaeresis",
       "key": "Alt-1 g",
-      "monad": "",
+      "monad": "operator-recursion",
       "dyad": "Function/operator self-reference",
       "note": "",
-      "slug": "del-diaeresis"
+      "slug": "del-diaeresis",
+      "aka": "循"
     },
     {
       "glyph": "?",
       "name": "question",
       "key": "",
-      "monad": "",
+      "monad": "predicate",
       "dyad": "Predicate",
       "note": "",
-      "slug": "question"
+      "slug": "question",
+      "aka": "若"
     },
     {
       "glyph": "::",
@@ -832,55 +923,61 @@
       "glyph": "⋄",
       "name": "diamond",
       "key": "Alt-`",
-      "monad": "",
+      "monad": "separator",
       "dyad": "Statement/row separator",
       "note": "",
-      "slug": "diamond"
+      "slug": "diamond",
+      "aka": "句"
     },
     {
       "glyph": "⍝",
-      "name": "comment",
-      "key": "Alt-c t",
-      "monad": "",
+      "name": "lamp",
+      "key": "Alt-o c",
+      "monad": "comment",
       "dyad": "Comment",
       "note": "",
-      "slug": "comment"
+      "slug": "lamp",
+      "aka": "注"
     },
     {
       "glyph": "⎕",
       "name": "quad",
       "key": "Alt-q",
-      "monad": "",
+      "monad": "io",
       "dyad": "Explicit output/input",
       "note": "",
-      "slug": "quad"
+      "slug": "quad",
+      "aka": "出入"
     },
     {
       "glyph": "•",
       "name": "bullet",
       "key": "Alt-y",
-      "monad": "",
+      "monad": "system",
       "dyad": "System function prefix",
       "note": "",
-      "slug": "bullet"
+      "slug": "bullet",
+      "aka": "系"
     },
     {
       "glyph": "⍬",
       "name": "zilde",
       "key": "Alt-Shift-0",
-      "monad": "",
+      "monad": "empty",
       "dyad": "Empty numeric vector",
       "note": "",
-      "slug": "zilde"
+      "slug": "zilde",
+      "aka": "空"
     },
     {
       "glyph": "¯",
       "name": "overbar",
       "key": "Alt-Minus",
-      "monad": "",
+      "monad": "negative",
       "dyad": "Negative literal sign",
       "note": "",
-      "slug": "overbar"
+      "slug": "overbar",
+      "aka": "负 負"
     },
     {
       "glyph": "∞",
@@ -889,65 +986,40 @@
       "monad": "",
       "dyad": "Real infinity",
       "note": "",
-      "slug": "infinity"
+      "slug": "infinity",
+      "aka": "永"
     },
     {
-      "glyph": "²",
-      "name": "superscript",
-      "key": "Alt-6",
-      "monad": "",
-      "dyad": "Postfix exponent",
+      "glyph": "ᵇ",
+      "name": "superscript-b",
+      "key": "Alt-6 b",
+      "monad": "bitwise",
+      "dyad": "",
       "note": "",
-      "slug": "superscript"
-    },
-    {
-      "glyph": "⁻¹",
-      "name": "superscript inverse",
-      "key": "Alt-6 -1",
-      "monad": "",
-      "dyad": "Inverse",
-      "note": "",
-      "slug": "superscript-inverse"
-    },
-    {
-      "glyph": "ᵀ",
-      "name": "superscript transpose",
-      "key": "Alt-6 t",
-      "monad": "",
-      "dyad": "Transpose",
-      "note": "",
-      "slug": "superscript-transpose"
-    },
-    {
-      "glyph": "₁",
-      "name": "subscript",
-      "key": "Alt-5 1",
-      "monad": "",
-      "dyad": "Index/subscript",
-      "note": "",
-      "slug": "subscript"
+      "slug": "superscript-b",
+      "aka": "按"
     }
   ],
   "keyboard": [
     [
       [
         "`",
-        "⋄",
-        "¨"
+        "~⋄",
+        ""
       ],
       [
         "1",
-        "¨",
+        "!¨",
         ""
       ],
       [
         "2",
-        "2",
+        "@⌽",
         ""
       ],
       [
         "3",
-        "√",
+        "#√",
         ""
       ],
       [
@@ -972,7 +1044,7 @@
       ],
       [
         "8",
-        "∞",
+        "*∞",
         ""
       ],
       [
@@ -987,12 +1059,12 @@
       ],
       [
         "-",
-        "¯",
+        "-¯",
         ""
       ],
       [
         "=",
-        "+≠≡",
+        "+=≠≡",
         ""
       ],
       [
@@ -1069,7 +1141,7 @@
       ],
       [
         "\\",
-        "⌽",
+        "|\\⍭",
         ""
       ]
     ],
@@ -1116,17 +1188,17 @@
       ],
       [
         "k",
-        "↑",
+        "↕↑",
         ""
       ],
       [
         "l",
-        "→",
+        "↦",
         ""
       ],
       [
         ";",
-        "⊣",
+        ":⊣",
         ""
       ],
       [
@@ -1183,17 +1255,17 @@
       ],
       [
         ",",
-        "≤↢",
+        "<,≤↢",
         ""
       ],
       [
         ".",
-        "≥↣",
+        ">.≥↣",
         ""
       ],
       [
         "/",
-        "¿",
+        "?/≢¿",
         ""
       ],
       [
@@ -1242,114 +1314,39 @@
   ],
   "followups": [
     [
-      "`",
-      "`⋄",
-      "_ / - → ⍚"
-    ],
-    [
       "1",
       "¨",
-      "t→⍤ · o→⍥ · *→⍣ · ~→⍨ · g→⍢"
+      "t→⍤ · o→⍥ · g→⍢ · 8→⍣ · `→⍨"
     ],
     [
       "5",
       "_",
-      "0–9→₀–₉ · x→ₓ · j→ⱼ · e→ₑ · r→ᵣ · -0–9→₋₀–₉"
+      "0–9→₀–₉ · x→ₓ · j→ⱼ · e→ₑ · r→ᵣ · -0–9→₋₀–₋₉"
     ],
     [
       "6",
       "^",
-      "0–9→⁰–⁹ · -0–9→⁻⁰–⁹ · t→ᵀ · u→ᵘ"
-    ],
-    [
-      "7",
-      "∆",
-      "|/\\→⍋ · _/-→⍙"
-    ],
-    [
-      "9",
-      "∨",
-      "~/`→⍱"
-    ],
-    [
-      "0",
-      "∧",
-      "~/`→⍲"
+      "0–9→⁰–⁹ · -0–9→⁻⁰–⁻⁹ · b→ᵇ · t→ᵀ · u→ᵘ"
     ],
     [
       "-",
       "¯",
-      ",→⍪ · \\→⍀ · /→⌿"
-    ],
-    [
-      "=",
-      "≡",
-      "/→≢"
+      ",→⍪ · \\→⍀ · /→⌿ · a→⍶ · w→⍹ · 7→⍙ · `→⍚ · 0→⊼ · 9→⊽ · e→⍷ · i→⍸ · z→⊆"
     ],
     [
       "q",
       "⎕",
-      "t→⌻ · :/;→⍠ · =→⌸ · u→⌹ · |/\\→⌷ · `→⌺"
-    ],
-    [
-      "w",
-      "⍵",
-      "_/-→⍹"
-    ],
-    [
-      "e",
-      "∊",
-      "_/-→⍷"
-    ],
-    [
-      "i",
-      "⍳",
-      "_/-→⍸"
+      "t→⌻ · =→⌸ · u→⌹ · `→⌺ · ;→⍠ · \\→⌷"
     ],
     [
       "o",
       "○",
-      "-→⊖ · \\→⍉ · /→⊘ · */8→⍟ · m→⊗ · u→⨸ · t→⌾"
+      "-→⊖ · \\→⍉ · /→⊘ · m→⊗ · u→⨸ · 8→⍟ · c→⍝ · b→⍎ · n→⍕"
     ],
     [
       "\\",
-      "|",
-      "~/`→⍭"
-    ],
-    [
-      "a",
-      "⍺",
-      "_/-→⍶"
-    ],
-    [
-      "g",
-      "∇",
-      "|/\\→⍒"
-    ],
-    [
-      "k",
-      "↑",
-      "j→↕"
-    ],
-    [
-      "z",
-      "⊂",
-      "_/-→⊆"
-    ],
-    [
-      "c",
-      "∩",
-      "t→⍝"
-    ],
-    [
-      "b",
-      "⊥",
-      "t→⍎"
-    ],
-    [
-      "n",
-      "⊤",
-      "t→⍕"
+      "⍭",
+      "7→⍋ · g→⍒"
     ]
   ],
   "examples": {
