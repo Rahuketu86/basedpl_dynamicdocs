@@ -71,6 +71,19 @@ per worker/kernel start (never per keystroke; see jupyterlite/README.md for
 why). See `jupyterlite/README.md`'s "Keyboard and completion engine" section
 for how the REPL and JupyterLite both consume this.
 
+`web/Cargo.lock` is committed and every build passes `--locked`. Upstream
+BasedPL declares open-ended dependency ranges (e.g. `rustymath >=0.1.42, <1`)
+and ships no lockfile, so without ours each CI run resolves whatever is newest
+that day. That broke the first v0.1.64 deploy: a newer `rustymath` changed the
+output of its `facts!` macro, and basedpl's `primitive_facts` macro (which
+still expected the old shape) failed to compile with "no rules expected
+`comparisons`". The lockfile pins the exact set that was built and tested
+(`rustymath 0.1.42`). It is part of the WASM cache key. When you bump the pin
+in `scripts/prepare_basedpl_wasm.sh`, regenerate it deliberately (build once
+without `--locked`, run the full regression, then commit the new lockfile
+alongside the bump) -- `--locked` will make CI fail loudly rather than drift
+silently if the two disagree.
+
 Two upstream changes between v0.1.31 and v0.1.64 are worth knowing about when
 touching glyph data:
 

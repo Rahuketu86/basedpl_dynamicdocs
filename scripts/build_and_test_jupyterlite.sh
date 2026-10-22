@@ -25,7 +25,7 @@ fi
 echo "===STAGE:wasm-build==="
 bash scripts/prepare_basedpl_wasm.sh
 rm -rf build/bpl
-cargo build --release --target wasm32-unknown-unknown --manifest-path web/Cargo.toml
+cargo build --locked --release --target wasm32-unknown-unknown --manifest-path web/Cargo.toml
 WASM=$(find . -type f -path '*/wasm32-unknown-unknown/release/basedpl_web.wasm' -print -quit)
 if [ -z "$WASM" ]; then echo "ERROR: basedpl_web.wasm was not found"; exit 1; fi
 wasm-bindgen "$WASM" --target web --out-dir build/bpl
