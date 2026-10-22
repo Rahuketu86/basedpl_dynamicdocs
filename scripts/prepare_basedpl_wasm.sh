@@ -1,34 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REV="88333e3785f4e8c391ed93dba0c001cb350c9440"  # v0.1.31 -- matches the officially published/tested `basedpl` npm package
+REV="6a9f58b620a6cbc0881da72a881e67e682b423b1"  # v0.1.64 -- matches the officially published/tested `basedpl` npm package
 DEST="${1:-build/basedpl}"
 
 rm -rf "$DEST"
 git clone --quiet https://github.com/AnswerDotAI/basedpl.git "$DEST"
 git -C "$DEST" checkout --quiet "$REV"
 
-python3 - "$DEST/src/execution.rs" <<'PY'
-from pathlib import Path
-import sys
-
-path = Path(sys.argv[1])
-text = path.read_text()
-
-needle = "        self.countdown.set(CHECKS_PER_CLOCK - 1);\n        let now = Instant::now();\n"
-replacement = """        self.countdown.set(CHECKS_PER_CLOCK - 1);
-        if self.poll.is_none() && self.timeout.is_none() {
-            if self.interrupt.0.load(Ordering::Relaxed) {
-                return Err(span.error(ErrorKind::Interrupt, "evaluation interrupted"));
-            }
-            return Ok(());
-        }
-        let now = Instant::now();
-"""
-if text.count(needle) != 1:
-    raise SystemExit(f"Expected timing pattern exactly once, found {text.count(needle)}")
-path.write_text(text.replace(needle, replacement))
-PY
+# No local compatibility patch needed as of this REV: upstream refactored
+# timing into a host/host_web module split (src/host_web.rs now does
+# `pub(crate) use web_time::Instant;`), which fixes the wasm32
+# Instant::now() panic a local patch used to work around here, at the root.
+# If a future REV bump reintroduces a similar WASM-only panic, that's the
+# place to look first before reaching for a new patch.
 
 # Vendor the real keyboard/completion engine at the same pinned REV -- never bump
 # these independently of the WASM pin above, see README.md's "Interpreter

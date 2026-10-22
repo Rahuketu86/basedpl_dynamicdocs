@@ -28,7 +28,7 @@ The interpreter runs in a Web Worker so evaluation does not block the UI thread.
     web/src/lib.rs                  wasm-bindgen API around BasedPL Session
     web/worker.js                   Persistent browser worker
     web/vendor/                     Vendored input.js/lb.js/layout.json (see below)
-    scripts/prepare_basedpl_wasm.sh Reproducible local BasedPL compatibility patch
+    scripts/prepare_basedpl_wasm.sh Pinned-revision checkout + keyboard/completion engine vendoring
     jupyterlite/                    JupyterLite kernel + extension (see jupyterlite/README.md)
     docker/jupyterlite-build.Dockerfile
                                     Local/remote dev image for fast JupyterLite iteration
@@ -48,7 +48,7 @@ The interpreter runs in a Web Worker so evaluation does not block the UI thread.
 The application pins:
 
     AnswerDotAI/basedpl
-    v0.1.31  (88333e3785f4e8c391ed93dba0c001cb350c9440)
+    v0.1.64  (6a9f58b620a6cbc0881da72a881e67e682b423b1)
 
 This is an officially tagged, released revision -- the same commit the
 `basedpl` npm package ships from -- not an arbitrary commit. Bumping this pin
@@ -70,6 +70,23 @@ all -- it's computed at runtime from the primitive/operator registry -- so
 per worker/kernel start (never per keystroke; see jupyterlite/README.md for
 why). See `jupyterlite/README.md`'s "Keyboard and completion engine" section
 for how the REPL and JupyterLite both consume this.
+
+Two upstream changes between v0.1.31 and v0.1.64 are worth knowing about when
+touching glyph data:
+
+- `⍝` was renamed from `comment` to `lamp`, and its docs page moved
+  (`nbs/glyphs/comment.qmd` -> `lamp.qmd`). The Reference tab's hand-written
+  `DATA.glyphs` in `src/index.html` carries a `name` and a `slug` per glyph
+  (the slug builds the upstream docs link), so both were updated; leaving
+  the old slug would have produced a dead documentation link. The live
+  keyboard/completion popup is unaffected since it reads names from
+  `symbols()` at runtime.
+- Each `symbols()` row gained a `hanzi` field: a `[simplified, traditional]`
+  pair of Chinese-character spellings for the glyph, where traditional falls
+  back to the simplified form when there is no distinct one (so `π` is
+  `["周", "周"]`). This is part of upstream's new notation support. Nothing
+  in this repo reads it; it is simply present in the JSON now. The glyph
+  count (99) and chord shortcuts are unchanged.
 
 The wrapper uses the real Rust API:
 
@@ -141,7 +158,15 @@ UUID functionality also needs its browser backend:
 
 This fixed the next WASM dependency failure.
 
-### 3. std::time::Instant in the default evaluator
+### 3. std::time::Instant in the default evaluator (resolved upstream as of v0.1.64, no longer applied)
+
+As of the pinned v0.1.64, upstream fixed this at the root -- `src/host_web.rs`
+now does `pub(crate) use web_time::Instant;` (part of a `host`/`host_web`
+module split), so `Instant::now()` no longer panics on wasm32 regardless of
+whether a timeout/poll is set. `scripts/prepare_basedpl_wasm.sh` no longer
+applies the patch described below. Left here for history, in case a similar
+WASM-only panic ever reappears in a future bump -- this was the original
+failure and fix:
 
 The first runtime failure was:
 
@@ -175,9 +200,7 @@ The local compatibility patch therefore changes the timing check to return early
 
 Timeout and poll behavior is otherwise unchanged.
 
-The patch is applied by scripts/prepare_basedpl_wasm.sh to a fresh checkout of the pinned upstream revision. The upstream BasedPL repository is not modified.
-
-The script verifies that the expected source pattern occurs exactly once and fails if upstream changes make the patch ambiguous.
+(Historical: the patch was applied by scripts/prepare_basedpl_wasm.sh to a fresh checkout of the pinned upstream revision, verifying the expected source pattern occurred exactly once and failing if upstream changes made the patch ambiguous. The upstream BasedPL repository was never modified. None of this runs anymore as of v0.1.64.)
 
 ## Diagnostic versus public evaluation
 
@@ -237,12 +260,13 @@ Both paths now pass in the generated Node WASM artifact on CI. This is important
 
 1. installs stable Rust and wasm32-unknown-unknown
 2. installs wasm-bindgen-cli 0.2.129
-3. checks out the pinned BasedPL revision
-4. applies the deterministic compatibility patch
-5. builds the WASM wrapper
-6. creates browser and Node bindings
-7. tests interpreter-only execution
-8. tests the public eval path, including ⍳5
+3. checks out the pinned BasedPL revision and vendors its keyboard/completion
+   engine (no local compatibility patch needed as of v0.1.64 -- see
+   "Interpreter integration" above)
+4. builds the WASM wrapper
+5. creates browser and Node bindings
+6. tests interpreter-only execution
+7. tests the public eval path, including ⍳5
 
 The latest regression run passed both the interpreter-only and public eval tests for:
 
@@ -272,7 +296,7 @@ This keeps upstream untouched, makes the compatibility delta reviewable, and mak
 
 ## Production Pages build
 
-.github/workflows/pages.yml uses the same preparation script as the PR workflow, so the deployed build and the PR regression test use the same BasedPL revision and WASM compatibility patch. (Browser E2E against the deployed site is a separate, manually-triggered workflow -- see `.github/workflows/e2e.yml` above.)
+.github/workflows/pages.yml uses the same preparation script as the PR workflow, so the deployed build and the PR regression test always use the same pinned BasedPL revision. (Browser E2E against the deployed site is a separate, manually-triggered workflow -- see `.github/workflows/e2e.yml` above.)
 
 After the WASM fix is merged to main, GitHub Pages must rebuild the worker and wasm-bindgen assets. A browser can otherwise continue executing an older worker/wasm pair from cache.
 

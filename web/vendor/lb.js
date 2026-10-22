@@ -94,8 +94,8 @@
         toggle.textContent = overlay ? '▼' : '▲';
         d.body.style.paddingTop = overlay || bar.hidden ? originalPadding : `${bar.offsetHeight}px`;
     }
-    const names = new Map(symbols.map(({glyph, name, monad, dyad, aliases}) =>
-        [glyph, [...new Set([name, monad, dyad, aliases].join(' ').split(' ').filter(Boolean))].join(' ')]));
+    const names = new Map(symbols.map(({glyph, name, monad, dyad}) =>
+        [glyph, [name, monad, dyad].filter(Boolean).join(' ')]));
     function stateGlyphs(state) {
         const {terminator, keys} = layout.states[state];
         return [terminator, ...Object.values(keys).flatMap(value => typeof value === 'string' ? [value] : stateGlyphs(value.state))];
@@ -110,7 +110,7 @@
     }
     // Related glyphs stay together; arrows meet at the boundary between menus and plain buttons.
     const order = [...new Set([
-        ...'^_¯¨○⎕≡∩⊥⊤⍭↑↓←→↢↣⇄∨∧⍺⍵∆∇⋄∊⍳⊂⊃⊣⊢×÷⌊⌈≤≥≠√π', ...groups.keys(), ...names.keys()
+        ...'^_¯¨○⎕≡⍭↑↓←↦↢↣⇄∨∧⍺⍵∆∇⋄∊⍳⊂⊃∩∪⊥⊤⊣⊢×÷⌊⌈≤≥≠√π', ...groups.keys(), ...names.keys()
     ])];
     for (const glyph of [...order.filter(g => groups.has(g)), ...order.filter(g => !groups.has(g))]) {
         if (!groups.has(glyph) && (variants.has(glyph) || /^[\x20-\x7e]+$/.test(glyph))) continue;
