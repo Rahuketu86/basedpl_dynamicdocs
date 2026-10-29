@@ -30,6 +30,7 @@ import json
 import unicodedata
 import re
 import sys
+import types
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -86,11 +87,19 @@ def load_symbols(path):
 
 
 def load_keyboards():
-    """Upstream's keyboards.py, vendored into this repo by prepare_basedpl_wasm.sh."""
+    """Upstream's keyboards.py, vendored into this repo by prepare_basedpl_wasm.sh.
+
+    Since 0.1.81 it does `from .assets import GENERATED`: the folder its macOS keyboard bundles are written to. This
+    script only reads its key maps, so it loads the file as part of a stand-in package that has just that name."""
     path = VENDOR / "keyboards.py"
     if not path.exists():
         sys.exit(f"{path} is missing. Run `bash scripts/prepare_basedpl_wasm.sh` first.")
-    spec = importlib.util.spec_from_file_location("bpl_upstream_keyboards", path)
+    package = types.ModuleType("bpl_upstream")
+    package.__path__ = []
+    assets = types.ModuleType("bpl_upstream.assets")
+    assets.GENERATED = Path("python/basedpl/assets")
+    sys.modules.update({"bpl_upstream": package, "bpl_upstream.assets": assets})
+    spec = importlib.util.spec_from_file_location("bpl_upstream.keyboards", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module

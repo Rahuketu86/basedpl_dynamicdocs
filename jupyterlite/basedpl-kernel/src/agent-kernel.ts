@@ -214,14 +214,14 @@ function handle(request: KernelRequest): void {
       content: {
         protocol_version: '5.3',
         implementation: 'BasedPL',
-        implementation_version: '0.1.64',
+        implementation_version: '0.1.81',
         language_info: {
           codemirror_mode: { name: 'apl' },
           file_extension: '.bpl',
           mimetype: 'text/x-apl',
           name: 'basedpl',
           pygments_lexer: 'apl',
-          version: '0.1.64'
+          version: '0.1.81'
         },
         banner: 'BasedPL agent kernel running in JupyterLite'
       }

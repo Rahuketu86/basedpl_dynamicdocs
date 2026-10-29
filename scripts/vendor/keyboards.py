@@ -7,11 +7,12 @@ Shortcuts follow local characters. Native Option ASCII and accent dead keys take
 import ctypes as ct, json
 from html import escape
 from pathlib import Path
+from .assets import GENERATED
 
 LAYOUT = Path(__file__).with_name('layout.json')
 DATA = LAYOUT.with_name('keyboards.json')
 OUTPUT = Path('editors/macos')
-ICON = OUTPUT/'BasedPL-us.bundle/Contents/Resources/BasedPL-us.icns'
+ICON = GENERATED/'macos/BasedPL-us.bundle/Contents/Resources/BasedPL-us.icns'
 SOURCES = {'us': 'US', 'uk': 'British', 'de': 'German', 'fr': 'French', 'es': 'Spanish-ISO'}
 MODIFIERS = [('', 0), ('anyShift', 2), ('caps', 4), ('anyShift caps', 6), ('anyOption caps?', 8), ('anyShift anyOption caps?', 10),
              ('command anyOption? anyControl? caps?', 1), ('command anyShift anyOption? anyControl? caps?', 3),
@@ -172,6 +173,9 @@ def keylayout(layout, lang='us'):
     base = bases()[lang]
     states = layout['states'] | base['states']
     bindings = {chord: layout['option'][char] for char, chord in shortcuts(layout, lang, base).items()}
+    unmodified = {OPTION: PLAIN, OPTION_SHIFT: SHIFT, CONTROL_OPTION: PLAIN, CONTROL_OPTION_SHIFT: SHIFT}
+    prefixes = {character(base['keys'][str(code)][unmodified[index]], base): value['state']
+                for (code, index), value in bindings.items() if isinstance(value, dict)}
     actions, keymaps, texts = {}, [], []
     for index in range(len(MODIFIERS)):
         keys = []
@@ -182,10 +186,10 @@ def keylayout(layout, lang='us'):
             if chord not in bindings:
                 native_key = f'{code}:{index}'
                 entries |= {name: s['keys'][native_key] for name, s in base['states'].items() if native_key in s['keys']}
-                char = character(value, base)
-                if index not in (COMMAND, COMMAND_SHIFT, CONTROL, CONTROL_SHIFT, CONTROL_OPTION, CONTROL_OPTION_SHIFT):
-                    entries |= {name: s['keys'][char] for name, s in layout['states'].items() if char in s['keys']}
-            elif isinstance(value, dict): entries[value['state']] = states[value['state']]['terminator']
+            if index not in (COMMAND, COMMAND_SHIFT, CONTROL, CONTROL_SHIFT):
+                char = character(values[unmodified.get(index, index)], base)
+                if name := prefixes.get(char): entries[name] = states[name]['terminator']
+                entries |= {name: s['keys'][char] for name, s in layout['states'].items() if char in s['keys']}
             if int(code) == SPACE: entries |= {name: s['terminator'] for name, s in layout['states'].items()}
             if int(code) in (DELETE, ESCAPE): entries |= {name: '' for name in states}
             texts += [v.get('output', '') if isinstance(v, dict) else v for v in entries.values()]
@@ -213,7 +217,7 @@ def keylayout(layout, lang='us'):
             '</keyboard>\n')
 
 
-def bundle(lang): return OUTPUT/f'BasedPL-{lang}.bundle/Contents'
+def bundle(lang): return GENERATED/f'macos/BasedPL-{lang}.bundle/Contents'
 
 
 def metadata(lang):
@@ -295,7 +299,7 @@ Hold Option (Alt) for the large character. Add Shift for the small character abo
 </div>
 ```
 
-Orange borders mark dead keys. Release Option before typing the next key. Repeat the same Option chord, or press Space, to enter the dead key's own character. Follow-ups can be sequences, such as `-1` for a negative superscript or subscript.
+Orange borders mark dead keys. You can hold or release Option between keys. Holding it through `5x51` enters `ₓ₁`. Repeat the prefix key, or press Space, to enter the dead key's own character. Follow-ups can be sequences, such as `-1` for a negative superscript or subscript.
 
 ''' + dead_key_table(layout) + r'''
 
@@ -303,9 +307,9 @@ This is the US-based map used in the browser and REPL, and by the native BasedPL
 
 ## macOS installation
 
-From a BasedPL repository checkout, run `scripts/install-macos.sh` to install SAX2B and the US keyboard layout. Pass `uk`, `de`, `fr` or `es` for British, German QWERTZ, French AZERTY or Spanish: for example, `scripts/install-macos.sh de`.
+After `pip install basedpl`, run `basedpl-install` to install the Jupyter kernel, SAX2B and BQN386B fonts, and the US keyboard layout for your user. Pass `uk`, `de`, `fr` or `es` for British, German QWERTZ, French AZERTY or Spanish: for example, `basedpl-install de`.
 
-In System Settings, open Keyboard → Text Input → Edit, add `BasedPL-us` (or your chosen code), then select it from the input menu. If the layout isn't listed, log out and back in. `editors/macos/BasedPL-{code}.txt` lists each native layout's shortcuts.
+In System Settings, open Keyboard → Text Input → Edit, add `BasedPL-us` (or your chosen code), then select it from the input menu. If the layout isn't listed, log out and back in. `editors/macos/BasedPL-{code}.txt` lists each native layout's shortcuts. On Linux, `basedpl-install` installs the kernel and fonts without a native keyboard layout.
 '''
 
 

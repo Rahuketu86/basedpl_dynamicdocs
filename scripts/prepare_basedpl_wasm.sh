@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REV="6a9f58b620a6cbc0881da72a881e67e682b423b1"  # v0.1.64 -- matches the officially published/tested `basedpl` npm package
+REV="bf27ca60f148d37ca3ac2354d183a96a92857197"  # v0.1.81 -- matches the officially published/tested `basedpl` npm package
 DEST="${1:-build/basedpl}"
 
 # Reuse a checkout that is already at the pinned revision (CI runs this again after a WASM

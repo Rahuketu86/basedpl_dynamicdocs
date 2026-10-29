@@ -1,4 +1,4 @@
-use basedpl::{EvalOptions, Session};
+use basedpl::{EvalOptions, Session, Turn};
 use std::sync::{Arc, Mutex};
 use wasm_bindgen::prelude::*;
 
@@ -15,7 +15,9 @@ pub fn configure(base: String) { basedpl::configure_browser(base); }
 pub fn symbols() -> String { basedpl::symbols::rows().to_string() }
 
 #[wasm_bindgen]
-pub struct BplSession { session: Session }
+// As of BasedPL 0.1.81 a process has one session; `Session::new()` hands out a `Turn` at it (cleared, as a new session
+// starts), which dereferences to the session.
+pub struct BplSession { session: Turn }
 
 #[wasm_bindgen]
 impl BplSession {

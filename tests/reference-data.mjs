@@ -46,17 +46,18 @@ check('every upstream symbol has a card', missing.length === 0, list(missing));
 const US_SHIFT = { '`': '~', '-': '_', '=': '+', '[': '{', ']': '}', '\\': '|', ';': ':', "'": '"', ',': '<', '.': '>', '/': '?' };
 const SHIFTED_DIGIT = ')!@#$%^&*(';
 const CODES = { '`': 'Backquote', '-': 'Minus', '=': 'Equal', '[': 'BracketLeft', ']': 'BracketRight', '\\': 'Backslash',
-  ';': 'Semicolon', "'": 'Quote', ',': 'Comma', '.': 'Period', '/': 'Slash' };
+  ';': 'Semicolon', "'": 'Quote', ',': 'Comma', '.': 'Period', '/': 'Slash', ' ': 'Space' };
 function keyEvent(key, { alt, shift }) {
   const code = /^[a-z]$/.test(key) ? 'Key' + key.toUpperCase() : /^[0-9]$/.test(key) ? 'Digit' + key : CODES[key];
   return { code, key, shiftKey: shift, altKey: alt, ctrlKey: false, metaKey: false };
 }
-// Press a physical key with Option (and optionally Shift); a dead key types nothing until repeated.
+// Press a physical key with Option (and optionally Shift). A dead key types nothing until the next key; Space then
+// types its own character (upstream's documented way to do it).
 function typeChord(key, shift) {
   engine.reset();
   let r = engine.press(keyEvent(key, { alt: true, shift }), true);
   let text = r?.text ?? '';
-  if (text === '' && r?.stop) text = engine.press(keyEvent(key, { alt: true, shift }), true)?.text ?? '';
+  if (text === '' && r?.stop) text = engine.press(keyEvent(' ', { alt: false, shift: false }), true)?.text ?? '';
   engine.reset();
   return text;
 }
@@ -104,7 +105,7 @@ for (const s of symbols) {
   replayed++;
   let out = '';
   keys.forEach((k, i) => { out += engine.press(toEvent(k, i === 0), true)?.text ?? ''; });
-  if (out === '' && keys.length === 1) out = engine.press(toEvent(keys[0], true), true)?.text ?? '';
+  if (out === '' && keys.length === 1) out = engine.press(keyEvent(' ', { alt: false, shift: false }), true)?.text ?? '';
   engine.reset();
   if (out !== s.glyph) replayBad.push(`${s.glyph} via "${s.shortcut}" typed ${JSON.stringify(out)}`);
 }

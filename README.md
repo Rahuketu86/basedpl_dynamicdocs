@@ -54,7 +54,7 @@ The interpreter runs in a Web Worker so evaluation does not block the UI thread.
 The application pins:
 
     AnswerDotAI/basedpl
-    v0.1.64  (6a9f58b620a6cbc0881da72a881e67e682b423b1)
+    v0.1.81  (bf27ca60f148d37ca3ac2354d183a96a92857197)
 
 This is an officially tagged, released revision -- the same commit the
 `basedpl` npm package ships from -- not an arbitrary commit. Bumping this pin
@@ -84,11 +84,13 @@ that day. That broke the first v0.1.64 deploy: a newer `rustymath` changed the
 output of its `facts!` macro, and basedpl's `primitive_facts` macro (which
 still expected the old shape) failed to compile with "no rules expected
 `comparisons`". The lockfile pins the exact set that was built and tested
-(`rustymath 0.1.42`). It is part of the WASM cache key. When you bump the pin
-in `scripts/prepare_basedpl_wasm.sh`, regenerate it deliberately (build once
-without `--locked`, run the full regression, then commit the new lockfile
-alongside the bump) -- `--locked` will make CI fail loudly rather than drift
-silently if the two disagree.
+(`rustymath 0.1.53` as of v0.1.81). It is part of the WASM cache key. When you bump the pin
+in `scripts/prepare_basedpl_wasm.sh`, update it deliberately in the same change: run
+`cargo update --manifest-path web/Cargo.toml -p basedpl` (only basedpl and what its new
+version requires move), run the full regression, then commit the new lockfile
+alongside the bump. Forgetting this fails the build at once with "cannot update the lock
+file ... because --locked was passed", which is the point: CI fails loudly rather than
+drifting silently.
 
 Two upstream changes between v0.1.31 and v0.1.64 are worth knowing about when
 touching glyph data:
@@ -107,9 +109,31 @@ touching glyph data:
   in this repo reads it; it is simply present in the JSON now. The glyph
   count (99) and chord shortcuts are unchanged.
 
+Upstream changes between v0.1.64 and v0.1.81 that this repo had to follow:
+
+- **One session per process.** `Session::new()` now returns a `basedpl::Turn`: a
+  turn at the process's single session, cleared as a new session starts. It
+  dereferences to `Session`, whose methods now take `&self`. `web/src/lib.rs`
+  holds a `Turn` (upstream's own wasm crate does the same), and nothing else
+  changed. Each wasm instance (one per Web Worker) still has its own session,
+  and `new BplSession()` still resets it, which is what the REPL's reset and
+  the per-notebook check in `scripts/verify_example_notebooks.mjs` rely on.
+- **`keyboards.py` imports `.assets`** (the folder its macOS keyboard bundles
+  go to). `refresh_reference_glyphs.py` loads the unmodified vendored file in
+  a stand-in package that provides just that name.
+- **Dead keys:** the subscript and superscript dead keys now type `₅` and `⁶`
+  as their own character (Option-5 / Option-6, then Space or the same chord),
+  where they typed `_` and `^`. Those are follow-ups, which the keyboards leave
+  to the follow-up table, so keys 5 and 6 now show just their digit. Option can
+  also be held through follow-ups now. `tests/reference-data.mjs` presses
+  Space after a dead key, upstream's documented way to type its character.
+- **New glyph `⁝` (tricolon)** on Option-Shift-;, with its own docs page; the
+  generated cards and keyboards pick it up.
+- `rustymath` moved from 0.1.42 to 0.1.53 (upstream's new minimum).
+
 The wrapper uses the real Rust API:
 
-- Session::new()
+- Session::new(), which returns a `Turn` (see the v0.1.81 notes below)
 - Session::eval_with()
 - Session::show()
 - Session::complete()
