@@ -5,6 +5,12 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# A pinned Rust, not "stable": the same toolchain and Cargo.lock give the same wasm bytes, so the fingerprints that
+# memexsolvelite pins for msl/v<version>/msl-worker.mjs (build.py) survive a rebuild after a cache miss. It is part of
+# the WASM cache key. Bump it deliberately, and update memexsolvelite's entry when the fingerprint changes.
+env:
+  RUST_TOOLCHAIN: "1.99.0"
+
 permissions:
   contents: read
   pages: write
@@ -36,12 +42,13 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: build/bpl
-          key: basedpl-wasm-${{ hashFiles('web/src/lib.rs', 'web/Cargo.toml', 'web/Cargo.lock', 'scripts/prepare_basedpl_wasm.sh') }}
+          key: basedpl-wasm-${{ env.RUST_TOOLCHAIN }}-${{ hashFiles('web/src/lib.rs', 'web/Cargo.toml', 'web/Cargo.lock', 'scripts/prepare_basedpl_wasm.sh') }}
 
       - name: Install Rust
         if: steps.bpl-wasm-cache.outputs.cache-hit != 'true'
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
           targets: wasm32-unknown-unknown
       - name: Install wasm-bindgen
         if: steps.bpl-wasm-cache.outputs.cache-hit != 'true'
@@ -114,7 +121,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: build/bpl
-          key: basedpl-wasm-${{ hashFiles('web/src/lib.rs', 'web/Cargo.toml', 'web/Cargo.lock', 'scripts/prepare_basedpl_wasm.sh') }}
+          key: basedpl-wasm-${{ env.RUST_TOOLCHAIN }}-${{ hashFiles('web/src/lib.rs', 'web/Cargo.toml', 'web/Cargo.lock', 'scripts/prepare_basedpl_wasm.sh') }}
 
       # Generate the Reference tab's glyph cards (names, docs links, chords), the Mac keyboard and
       # dead-key follow-ups, JupyterLite's keyboard rows and the agent tools' reference-data.json

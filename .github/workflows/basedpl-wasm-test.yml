@@ -7,6 +7,12 @@ on:
       - "scripts/prepare_basedpl_wasm.sh"
       - ".github/workflows/**"
 
+# A pinned Rust, not "stable": the same toolchain and Cargo.lock give the same wasm bytes, so the fingerprints that
+# memexsolvelite pins for msl/v<version>/msl-worker.mjs (build.py) survive a rebuild after a cache miss. It is part of
+# the WASM cache key. Bump it deliberately, and update memexsolvelite's entry when the fingerprint changes.
+env:
+  RUST_TOOLCHAIN: "1.99.0"
+
 permissions:
   contents: read
 
@@ -17,8 +23,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
           targets: wasm32-unknown-unknown
       - name: Install wasm-bindgen
         run: cargo install wasm-bindgen-cli --version 0.2.129

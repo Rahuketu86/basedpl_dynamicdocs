@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
+import base64
+import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import sys
@@ -68,5 +71,42 @@ if WASM_BUILD.exists():
         shutil.copytree(vendor_src, target / "vendor", dirs_exist_ok=True)
 else:
     raise SystemExit(f"Missing WASM build: {WASM_BUILD}")
+
+# BasedPL as a memexsolvelite language (msl-lang/1, web/msl-worker.mjs), at a path per BasedPL version:
+# msl/v<version>/{msl-worker.mjs, basedpl_web.js, basedpl_web_bg.wasm}. memexsolvelite pins msl-worker.mjs by its
+# fingerprint; the worker pins the glue and the wasm, whose fingerprints are filled in here. CI builds with a pinned Rust
+# toolchain (pages.yml), so a rebuild of the same version gives the same bytes and the same fingerprints. Each deploy
+# replaces dist/, so only the current version is served: bumping BasedPL means updating memexsolvelite's entry too.
+SITE = os.environ.get("BASEDPL_SITE", "https://basedpl.rahulsaraf.online").rstrip("/")
+
+
+def integrity(data: bytes) -> str:
+    return "sha256-" + base64.b64encode(hashlib.sha256(data).digest()).decode()
+
+
+cargo = (ROOT / "build" / "basedpl" / "Cargo.toml").read_text(encoding="utf-8")
+bpl_version = re.search(r'\[workspace\.package\][^\[]*?version\s*=\s*"([^"]+)"', cargo, re.S).group(1)
+msl_dir = DIST / "msl" / f"v{bpl_version}"
+msl_dir.mkdir(parents=True, exist_ok=True)
+glue = (WASM_BUILD / "basedpl_web.js").read_bytes()
+wasm = (WASM_BUILD / "basedpl_web_bg.wasm").read_bytes()
+(msl_dir / "basedpl_web.js").write_bytes(glue)
+(msl_dir / "basedpl_web_bg.wasm").write_bytes(wasm)
+worker = (ROOT / "web" / "msl-worker.mjs").read_text(encoding="utf-8")
+for marker, value in (("__BPL_VERSION__", bpl_version), ("__GLUE_INTEGRITY__", integrity(glue)), ("__WASM_INTEGRITY__", integrity(wasm))):
+    if marker not in worker:
+        raise SystemExit(f"web/msl-worker.mjs lacks {marker}")
+    worker = worker.replace(marker, value)
+(msl_dir / "msl-worker.mjs").write_text(worker, encoding="utf-8")
+entry = {"name": "basedpl", "display_name": f"BasedPL {bpl_version}", "language": "basedpl",
+         "worker_url": f"{SITE}/msl/v{bpl_version}/msl-worker.mjs", "integrity": integrity(worker.encode("utf-8"))}
+(msl_dir / "memexsolvelite-entry.json").write_text(json.dumps(entry, indent=1) + "\n", encoding="utf-8")
+# Where the current version is, for memexsolvelite's maintainers and tests/e2e/msl-worker.mjs.
+(DIST / "msl" / "index.json").write_text(json.dumps({"version": bpl_version, "path": f"v{bpl_version}/", "entry": entry},
+                                                    indent=1) + "\n", encoding="utf-8")
+# Cloudflare reads _headers (GitHub Pages ignores it and already sends Access-Control-Allow-Origin: *)
+(DIST / "_headers").write_text(
+    "/msl/*\n  Access-Control-Allow-Origin: *\n  Cross-Origin-Resource-Policy: cross-origin\n", encoding="utf-8")
+print(f"memexsolvelite language: {msl_dir.relative_to(DIST)} (worker {entry['integrity']})")
 
 print(f"Built {DIST / 'index.html'} and {DIST / asset_dir}")

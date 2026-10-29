@@ -1,6 +1,26 @@
-use basedpl::{EvalOptions, Session, Turn};
+use basedpl::{EvalOptions, Poll, Session, Turn};
+use std::cell::RefCell;
 use std::sync::{Arc, Mutex};
 use wasm_bindgen::prelude::*;
+
+thread_local! {
+    /// The host's interrupt flag, if it gave one (see `set_interrupt`). It lives here, not in the poll closure, because a
+    /// `Poll` must be `Send + Sync` and a JavaScript array isn't.
+    static INTERRUPT: RefCell<Option<js_sys::Int32Array>> = const { RefCell::new(None) };
+}
+
+/// Lets the host interrupt a running `eval` through shared memory: while `flag[0]` is 1, the evaluation stops with an
+/// interrupt error. memexsolvelite's language protocol (web/msl-worker.mjs) passes its `Int32Array` over the
+/// `SharedArrayBuffer` it sends in `init`. Without a flag, `eval` checks nothing, as before.
+#[wasm_bindgen]
+pub fn set_interrupt(flag: Option<js_sys::Int32Array>) { INTERRUPT.set(flag); }
+
+/// A poll that reports the host's interrupt flag, when there is one. BasedPL calls it at most every 10 ms.
+fn interrupt_poll() -> Option<Poll> {
+    INTERRUPT.with_borrow(Option::is_some).then(|| {
+        Arc::new(|| INTERRUPT.with_borrow(|flag| flag.as_ref().is_some_and(|f| js_sys::Atomics::load(f, 0) == Ok(1)))) as Poll
+    })
+}
 
 /// Sets the URL that relative paths resolve against for `•nget`/`•nput`/`•load`.
 /// Without this, those read/write against an empty base and simply error.
@@ -59,6 +79,7 @@ impl BplSession {
 
         let result = self.session.eval_with(code, EvalOptions {
             output: Some(sink),
+            poll: interrupt_poll(),
             ..EvalOptions::default()
         });
 

@@ -27,6 +27,7 @@ The interpreter runs in a Web Worker so evaluation does not block the UI thread.
     web/Cargo.toml                  WASM wrapper crate
     web/src/lib.rs                  wasm-bindgen API around BasedPL Session
     web/worker.js                   Persistent browser worker
+    web/msl-worker.mjs              BasedPL as a memexsolvelite language (msl-lang/1), see below
     web/vendor/                     Vendored input.js/lb.js/layout.json (see below)
     scripts/prepare_basedpl_wasm.sh Pinned-revision checkout + keyboard/completion engine vendoring
     jupyterlite/                    JupyterLite kernel + extension (see jupyterlite/README.md)
@@ -48,6 +49,7 @@ The interpreter runs in a Web Worker so evaluation does not block the UI thread.
     reference-data.json             The same data for the WebMCP agent tools (generated, see below)
     tests/reference-data.mjs        Browser-free checks of that data against upstream
     tests/e2e/reference.mjs         Browser check: Reference tab, REPL and notebook page
+    tests/e2e/msl-worker.mjs        Browser check: the memexsolvelite language worker
 
 ## Interpreter integration
 
@@ -226,6 +228,45 @@ browser check (`tests/e2e/reference.mjs`) covers the Reference tab, the REPL and
 `refresh_reference_glyphs.py`, commit what changed (including `scripts/vendor/` and `web/Cargo.lock`),
 and read the script's "replaced / added / dropped" lines -- a glyph upstream retires with no entry in
 `SUCCESSORS` (top of that script) is dropped, which you may want to turn into a replacement.
+
+## BasedPL as a memexsolvelite language
+
+memexsolvelite (github.com/Rahuketu86/memexsolvelite) runs languages as Web Workers speaking its
+`msl-lang/1` protocol (its `PROTOCOL.md`), and can load one from another site when its manifest
+(`site/jupyter-lite.json` -> `jupyter-config-data.memexKernels`) lists it with a pinned fingerprint.
+This site serves BasedPL that way, next to the REPL and the JupyterLite kernel, which are unchanged:
+
+    https://basedpl.rahulsaraf.online/msl/v<version>/msl-worker.mjs        the worker (web/msl-worker.mjs)
+                                     /msl/v<version>/basedpl_web.js         the wasm-bindgen glue
+                                     /msl/v<version>/basedpl_web_bg.wasm    the interpreter
+                                     /msl/v<version>/memexsolvelite-entry.json   the manifest entry to paste
+                                     /msl/index.json                         which version is current
+
+How it fits together:
+
+- memexsolvelite fetches the worker, checks it against the entry's `integrity`, and runs those exact bytes
+  from a `blob:` URL. So the worker is one self-contained module: it finds its files through `init.base`,
+  and checks the glue's and the wasm's own fingerprints before running them. `build.py` fills those
+  fingerprints in, then computes the worker's for the entry.
+- Results, output and errors follow the JupyterLite kernel's rules (`display` events are results, other
+  text is stdout, a BasedPL error is the reply's `error`); `` ` `` completes glyphs by name.
+- **Interrupt:** memexsolvelite passes a `SharedArrayBuffer` flag in `init` (when its page is cross-origin
+  isolated). `web/src/lib.rs` exports `set_interrupt(flag)`; while a flag is set, `eval` gives BasedPL a
+  poll callback that reads it, so a running cell stops with `KeyboardInterrupt` and the session keeps its
+  state. The REPL and the JupyterLite kernel set no flag, so nothing changes for them.
+- **Headers:** `build.py` writes `dist/_headers`, which the Cloudflare deploy applies:
+  `Access-Control-Allow-Origin: *` and `Cross-Origin-Resource-Policy: cross-origin` on `/msl/*`.
+- **Stable fingerprints:** CI builds with a pinned Rust (`RUST_TOOLCHAIN` in `pages.yml`, also in the WASM
+  cache key) rather than "stable", so rebuilding the same version gives the same bytes and memexsolvelite's
+  pin keeps working.
+- **After a BasedPL bump**, the path changes and each deploy replaces `dist/`, so only the new version is
+  served: paste the new `memexsolvelite-entry.json` into memexsolvelite's manifest and redeploy it. The
+  same applies after bumping `RUST_TOOLCHAIN`, `wasm-bindgen` or `web/msl-worker.mjs`, since the
+  fingerprint changes.
+
+`tests/e2e/msl-worker.mjs` loads the worker exactly as memexsolvelite does, from a cross-origin isolated
+page, and checks the fingerprint, `⍳5`, state between cells, stdout, errors, `` `om `` completion, and that
+the interrupt flag stops an endless loop with the session intact.
 
 ## WASM compatibility fixes
 

@@ -80,6 +80,7 @@ echo "===STAGE:e2e-test==="
 BASE_URL="http://127.0.0.1:${PORT}/" node tests/e2e/repl.mjs
 BASE_URL="http://127.0.0.1:${PORT}/" node tests/e2e/jupyterlite-glyph.mjs
 BASE_URL="http://127.0.0.1:${PORT}/" node tests/e2e/reference.mjs
+BASE_URL="http://127.0.0.1:${PORT}/" node tests/e2e/msl-worker.mjs
 BASE_URL="http://127.0.0.1:${PORT}/" node tests/e2e/example-notebooks.mjs
 
 kill "$SERVER_PID" 2>/dev/null || true
