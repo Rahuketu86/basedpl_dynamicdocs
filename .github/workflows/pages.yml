@@ -196,6 +196,8 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: dist
+          # deploy-cloudflare.yml downloads this build; the default keeps it only 1 day, too short to redeploy later.
+          retention-days: 7
 
 
   deploy:

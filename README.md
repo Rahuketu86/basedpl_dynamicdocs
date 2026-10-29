@@ -41,7 +41,7 @@ The interpreter runs in a Web Worker so evaluation does not block the UI thread.
     .github/workflows/basedpl-wasm-test.yml
                                     PR WASM build/runtime regression tests
     .github/workflows/deploy-cloudflare.yml
-                                    Manual: redeploy the latest successful Pages build to Cloudflare
+                                    Deploys each successful Pages build to Cloudflare (or one by run ID, by hand)
     build.py                        Reference-page generator
     scripts/refresh_reference_glyphs.py
                                     Generates the glyph cards, keyboard and follow-ups from upstream
@@ -182,9 +182,16 @@ This (and the JupyterLite/example-notebook E2E tests) run from
 deliberately **not** part of the Pages build/deploy workflow. A real-browser
 E2E run takes several minutes and has no business gating or blocking a
 deploy; it also means a flaky/slow E2E run can no longer make
-`deploy-cloudflare.yml`'s "latest successful Pages build" lookup
-(which checks the whole `pages.yml` run's status) skip a perfectly good,
-already-deployed build.
+`deploy-cloudflare.yml` skip a perfectly good, already-deployed build
+(it deploys when the whole `pages.yml` run succeeds).
+
+`deploy-cloudflare.yml` runs by itself after every successful Pages build on
+`main` and deploys that exact build, so Cloudflare no longer waits for a manual
+run, which could pick the wrong or an expired build: Pages builds are kept 7
+days (`retention-days` in `pages.yml`; the default was 1). It prints the commit
+it deploys and stops with a clear message when the build is gone. Run it by
+hand to redeploy a given build: `run_id` is the long number in that Pages
+run's URL (`.../actions/runs/<run_id>`), not the `#57` shown in the list.
 
 ## Reference, REPL and notebook glyph data (generated from upstream)
 

@@ -1,10 +1,16 @@
 name: Deploy BasedPL to Cloudflare Worker
 
+# Runs by itself after every successful Pages build on main, and deploys that exact build. The manual trigger stays for
+# redeploying a given build: run_id is the long number in the Pages run's URL (.../actions/runs/<run_id>), not "#57".
 on:
+  workflow_run:
+    workflows: ["Deploy BasedPL APL Reference"]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
     inputs:
       run_id:
-        description: "Successful Pages build run ID (leave blank for latest successful main build)"
+        description: "Pages build run ID, the long number in its URL (blank: latest successful main build)"
         required: false
         type: string
 
@@ -19,6 +25,7 @@ concurrency:
 jobs:
   deploy:
     name: Deploy built site to Cloudflare Worker
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Find build run
@@ -26,25 +33,40 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           INPUT_RUN_ID: ${{ inputs.run_id }}
+          TRIGGER_RUN_ID: ${{ github.event.workflow_run.id }}
         run: |
           set -euo pipefail
 
-          if [ -n "$INPUT_RUN_ID" ]; then
-            echo "run_id=$INPUT_RUN_ID" >> "$GITHUB_OUTPUT"
-            exit 0
+          if [ -n "$TRIGGER_RUN_ID" ]; then
+            run_id=$TRIGGER_RUN_ID
+            echo "Deploying the Pages build that just finished: $run_id"
+          elif [ -n "$INPUT_RUN_ID" ]; then
+            run_id=$INPUT_RUN_ID
+            case "$run_id" in
+              *[!0-9]*) echo "run_id must be the run's ID, the long number in its URL (.../actions/runs/<run_id>), not '$run_id'."; exit 1 ;;
+            esac
+            echo "Deploying the Pages build given: $run_id"
+          else
+            run_id=$(gh api \
+              -H "Accept: application/vnd.github+json" \
+              "/repos/${GITHUB_REPOSITORY}/actions/workflows/pages.yml/runs?branch=main&status=success&per_page=1" \
+              --jq '.workflow_runs[0].id')
+            if [ -z "$run_id" ] || [ "$run_id" = "null" ]; then
+              echo "No successful Pages build run found on main."
+              exit 1
+            fi
+            echo "Deploying the latest successful Pages build: $run_id"
           fi
 
-          run_id=$(gh api \
-            -H "Accept: application/vnd.github+json" \
-            "/repos/${GITHUB_REPOSITORY}/actions/workflows/pages.yml/runs?branch=main&status=success&per_page=1" \
-            --jq '.workflow_runs[0].id')
-
-          if [ -z "$run_id" ] || [ "$run_id" = "null" ]; then
-            echo "No successful Pages build run found on main."
+          # Say what is being deployed, and fail clearly if the build is gone (Pages builds are kept 7 days).
+          gh api "/repos/${GITHUB_REPOSITORY}/actions/runs/$run_id" \
+            --jq '"Commit \(.head_sha[0:7]) on \(.head_branch): \(.display_title) (\(.conclusion), \(.created_at))"'
+          artifact=$(gh api "/repos/${GITHUB_REPOSITORY}/actions/runs/$run_id/artifacts" \
+            --jq '[.artifacts[] | select(.name == "github-pages")][0] | if . == null then "missing" elif .expired then "expired" else "ok" end')
+          if [ "$artifact" != "ok" ]; then
+            echo "Pages run $run_id has no github-pages build to deploy ($artifact). Rerun that Pages build, or deploy a newer one."
             exit 1
           fi
-
-          echo "Using latest successful Pages build: $run_id"
           echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
 
       - name: Download built site
