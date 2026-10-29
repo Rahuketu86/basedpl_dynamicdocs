@@ -28,7 +28,9 @@ rm -rf build/bpl
 cargo build --locked --release --target wasm32-unknown-unknown --manifest-path web/Cargo.toml
 WASM=$(find . -type f -path '*/wasm32-unknown-unknown/release/basedpl_web.wasm' -print -quit)
 if [ -z "$WASM" ]; then echo "ERROR: basedpl_web.wasm was not found"; exit 1; fi
-wasm-bindgen "$WASM" --target web --out-dir build/bpl
+# The browser module drops its name section (every function's name), as upstream's npm release does: it takes the wasm
+# from 28 MB to 22 MB, under Cloudflare's 25 MiB limit per file. See README.md, "Debugging WASM RuntimeError".
+wasm-bindgen "$WASM" --target web --remove-name-section --remove-producers-section --out-dir build/bpl
 cp build/bpl/basedpl_web.js jupyterlite/basedpl-kernel/src/basedpl_web.js
 cp build/bpl/basedpl_web_bg.wasm jupyterlite/basedpl-kernel/src/basedpl_web_bg.wasm
 
@@ -62,6 +64,7 @@ python3 build.py
 echo "===STAGE:jupyterlite-build==="
 rm -rf dist/jupyterlite
 (cd jupyterlite && jupyter lite build --output-dir ../dist/jupyterlite)
+python3 scripts/check_asset_sizes.py dist
 
 echo "===STAGE:serve==="
 nohup python3 -m http.server "$PORT" --bind 0.0.0.0 --directory dist > /tmp/server.log 2>&1 &

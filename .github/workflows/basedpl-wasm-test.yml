@@ -37,7 +37,9 @@ jobs:
           cargo build --locked --release --target wasm32-unknown-unknown --manifest-path web/Cargo.toml
           WASM=$(find . -type f -path '*/wasm32-unknown-unknown/release/basedpl_web.wasm' -print -quit)
           test -n "$WASM"
-          wasm-bindgen "$WASM" --target web --out-dir build/bpl
+          # The browser module drops its name section (every function's name), as upstream's npm release does: it takes the wasm
+          # from 28 MB to 22 MB, under Cloudflare's 25 MiB limit per file. See README.md, "Debugging WASM RuntimeError".
+          wasm-bindgen "$WASM" --target web --remove-name-section --remove-producers-section --out-dir build/bpl
           wasm-bindgen "$WASM" --target nodejs --out-dir build/diagnostic
       - name: Test evaluation without rendering
         run: |

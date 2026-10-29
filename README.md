@@ -436,6 +436,14 @@ The generated site is written to dist/index.html.
 
 ## Debugging WASM RuntimeError: unreachable
 
+**The deployed wasm has no function names.** Every browser build (`pages.yml`, `scripts/build_and_test_jupyterlite.sh`)
+runs wasm-bindgen with `--remove-name-section --remove-producers-section`, as upstream's npm release does: the name
+section holds every function's name, and dropping it takes BasedPL v0.1.81's module from 28 MB to 22 MB, under
+Cloudflare's 25 MiB limit per file (`scripts/check_asset_sizes.py` fails the build over it; Cloudflare would otherwise
+refuse the deploy and keep serving the previous build, while GitHub Pages took the new one). A trap's stack then
+shows `wasm-function[N]`. To read names, rebuild locally without those two flags and reproduce there. The Node build
+in `build/diagnostic` keeps its names.
+
 Do not assume every unreachable is the original clock bug.
 
 For this project the debugging sequence is:
