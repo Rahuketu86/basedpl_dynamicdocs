@@ -50,6 +50,7 @@ The interpreter runs in a Web Worker so evaluation does not block the UI thread.
     tests/reference-data.mjs        Browser-free checks of that data against upstream
     tests/e2e/reference.mjs         Browser check: Reference tab, REPL and notebook page
     tests/e2e/msl-worker.mjs        Browser check: the memexsolvelite language worker
+    docs/                           Design records (BasedPL 0.1.81 upgrade, memexsolvelite language)
 
 ## Interpreter integration
 
